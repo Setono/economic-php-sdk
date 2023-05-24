@@ -15,6 +15,8 @@ composer require setono/economic-php-sdk
 ```
 
 ## Usage
+
+### Get a collection
 ```php
 <?php
 use Setono\Economic\Client\Client;
@@ -93,6 +95,22 @@ Setono\Economic\DTO\Collection Object
         )
 
 )
+```
+### Paginate
+
+```php
+<?php
+use Setono\Economic\Client\Client;
+
+$client = new Client('demo', 'demo');
+
+$skipPages = 0;
+
+do {
+    $products = $client
+        ->products()
+        ->get(skipPages: $skipPages++);
+} while(!$products->isEmpty());
 ```
 
 ### Other requests
