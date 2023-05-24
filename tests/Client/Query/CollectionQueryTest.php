@@ -35,6 +35,15 @@ final class CollectionQueryTest extends TestCase
     /**
      * @test
      */
+    public function it_throws_exception_if_page_size_is_zero(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new CollectionQuery(pageSize: 0);
+    }
+
+    /**
+     * @test
+     */
     public function it_throws_exception_if_page_size_is_negative(): void
     {
         $this->expectException(\InvalidArgumentException::class);
