@@ -22,4 +22,22 @@ final class CollectionQueryTest extends TestCase
         self::assertFalse($query->isEmpty());
         self::assertSame('skippages=0&pagesize=20&filter=name%24like%3Ab&sort=name', $query->toString());
     }
+
+    /**
+     * @test
+     */
+    public function it_throws_exception_if_skip_pages_is_negative(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new CollectionQuery(-1);
+    }
+
+    /**
+     * @test
+     */
+    public function it_throws_exception_if_page_size_is_negative(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new CollectionQuery(pageSize: -1);
+    }
 }
