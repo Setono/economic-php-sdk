@@ -15,7 +15,85 @@ composer require setono/economic-php-sdk
 ```
 
 ## Usage
- TODO
+```php
+<?php
+use Setono\Economic\Client\Client;
+
+$client = new Client('demo', 'demo');
+
+$products = $client
+    ->products()
+    ->get(filter: 'name$like:b', sortBy: 'name')
+;
+
+print_r($products);
+```
+
+will output something like:
+
+```text
+Setono\Economic\DTO\Collection Object
+(
+    [collection] => Array
+        (
+            [0] => Setono\Economic\DTO\Product Object
+                (
+                    [productNumber] => 2
+                    [name] => Barred product
+                    [salesPrice] => 50
+                )
+
+            [1] => Setono\Economic\DTO\Product Object
+                (
+                    [productNumber] => 5
+                    [name] => Fountain Pen, Blue
+                    [salesPrice] => 30
+                )
+
+            [2] => Setono\Economic\DTO\Product Object
+                (
+                    [productNumber] => 1
+                    [name] => Noname T-shirt Black
+                    [salesPrice] => 70
+                )
+
+            [3] => Setono\Economic\DTO\Product Object
+                (
+                    [productNumber] => 3
+                    [name] => SIlk Fabric
+                    [salesPrice] => 50
+                )
+
+        )
+
+    [pagination] => Setono\Economic\DTO\Pagination Object
+        (
+            [maxPageSizeAllowed] => 1000
+            [skipPages] => 0
+            [pageSize] => 20
+            [results] => 4
+            [resultsWithoutFilter] => 7
+            [firstPage] => Setono\Economic\DTO\Page Object
+                (
+                    [endpoint] => products
+                    [skipPages] => 0
+                    [pageSize] => 20
+                    [url] => https://restapi.e-conomic.com/products?skippages=0&pagesize=20&filter=name%24like%3Ab&sort=name
+                )
+
+            [lastPage] => Setono\Economic\DTO\Page Object
+                (
+                    [endpoint] => products
+                    [skipPages] => 0
+                    [pageSize] => 20
+                    [url] => https://restapi.e-conomic.com/products?skippages=0&pagesize=20&filter=name%24like%3Ab&sort=name
+                )
+
+            [nextPage] =>
+        )
+
+)
+```
 
 ### Other requests
 
