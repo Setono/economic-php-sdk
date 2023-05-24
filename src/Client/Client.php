@@ -16,6 +16,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Setono\Economic\Client\Endpoint\ProductsEndpoint;
 use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
+use Setono\Economic\Client\Query\Query;
 use Setono\Economic\Exception\InternalServerErrorException;
 use Setono\Economic\Exception\NotFoundException;
 use Setono\Economic\Exception\UnexpectedStatusCodeException;
@@ -66,13 +67,18 @@ final class Client implements ClientInterface, LoggerAwareInterface
         return $this->lastResponse;
     }
 
-    public function get(string $uri, array $query = []): ResponseInterface
+    public function get(string $uri, Query|array $query = []): ResponseInterface
     {
-        $q = http_build_query(array_map(static function ($element) {
-            return $element instanceof \DateTimeInterface ? $element->format(\DATE_ATOM) : $element;
-        }, $query), '', '&', \PHP_QUERY_RFC3986);
+        if (is_array($query)) {
+            $query = new Query($query);
+        }
 
-        $url = sprintf('%s/%s%s', $this->getBaseUri(), ltrim($uri, '/'), '' === $q ? '' : '?' . $q);
+        $url = sprintf(
+            '%s/%s%s',
+            $this->getBaseUri(),
+            ltrim($uri, '/'),
+            $query->isEmpty() ? '' : '?' . $query->toString(),
+        );
 
         $request = $this->getRequestFactory()->createRequest('GET', $url);
 
