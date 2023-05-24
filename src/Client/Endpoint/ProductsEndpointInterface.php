@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\Client\Builder\SortBy;
 use Setono\Economic\DTO\Collection;
 use Setono\Economic\DTO\Product;
 
