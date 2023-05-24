@@ -7,6 +7,7 @@ namespace Setono\Economic\Client\Query;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * @covers \Setono\Economic\Client\Query\Query
  * @covers \Setono\Economic\Client\Query\CollectionQuery
  */
 final class CollectionQueryTest extends TestCase
