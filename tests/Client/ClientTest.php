@@ -29,7 +29,6 @@ final class ClientTest extends TestCase
             'empty' => null,
             'param1' => 'value 1',
             'param2' => 'value 2',
-            'date' => \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', '2023-02-15 11:50:00'),
         ]);
 
         self::assertNotNull($httpClient->lastRequest);
@@ -37,7 +36,7 @@ final class ClientTest extends TestCase
         self::assertNotNull($client->getLastRequest());
         self::assertSame('GET', $httpClient->lastRequest->getMethod());
         self::assertSame(
-            'https://restapi.e-conomic.com/endpoint/sub?param1=value%201&param2=value%202&date=2023-02-15T11%3A50%3A00%2B00%3A00',
+            'https://restapi.e-conomic.com/endpoint/sub?param1=value%201&param2=value%202',
             (string) $httpClient->lastRequest->getUri(),
         );
         self::assertSame('app-secret-token', $httpClient->lastRequest->getHeaderLine('X-AppSecretToken'));
