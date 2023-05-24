@@ -11,4 +11,6 @@ final class Product
     public ?string $name = null;
 
     public ?float $salesPrice = null;
+
+    public ?Inventory $inventory = null;
 }
