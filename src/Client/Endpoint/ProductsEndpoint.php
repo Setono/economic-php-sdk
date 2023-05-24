@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\Client\Query\Query;
+use Setono\Economic\Client\Query\CollectionQuery;
 use Setono\Economic\DTO\Collection;
 use Setono\Economic\DTO\Product;
 use Setono\Economic\Exception\NotFoundException;
@@ -34,7 +34,7 @@ final class ProductsEndpoint extends Endpoint implements ProductsEndpointInterfa
             $collection,
             $this->createSourceFromResponse($this->client->get(
                 'products',
-                Query::fromCollectionParameters($skipPages, $pageSize, $filter, $sortBy),
+                new CollectionQuery($skipPages, $pageSize, $filter, $sortBy),
             )),
         );
     }

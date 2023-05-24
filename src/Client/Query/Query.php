@@ -4,29 +4,10 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Query;
 
-use Webmozart\Assert\Assert;
-
-final class Query implements \Stringable
+class Query implements \Stringable
 {
     public function __construct(private readonly array $parameters = [])
     {
-    }
-
-    public static function fromCollectionParameters(
-        int $skipPages = 0,
-        int $pageSize = 20,
-        string $filter = null,
-        string $sortBy = null,
-    ): self {
-        Assert::greaterThanEq($skipPages, 0);
-        Assert::greaterThanEq($pageSize, 1);
-
-        return new self([
-            'skippages' => $skipPages,
-            'pagesize' => $pageSize,
-            'filter' => $filter,
-            'sort' => $sortBy,
-        ]);
     }
 
     public function isEmpty(): bool
