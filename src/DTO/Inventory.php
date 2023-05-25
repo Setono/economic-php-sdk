@@ -6,11 +6,11 @@ namespace Setono\Economic\DTO;
 
 final class Inventory
 {
-    public int $available = 0;
+    public float $available = 0;
 
-    public int $inStock = 0;
+    public float $inStock = 0;
 
-    public int $orderedByCustomers = 0;
+    public float $orderedByCustomers = 0;
 
-    public int $orderedFromSuppliers = 0;
+    public float $orderedFromSuppliers = 0;
 }
