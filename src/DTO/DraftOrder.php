@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Setono\Economic\DTO;
 
-final class BookedInvoice
+final class DraftOrder
 {
-    public ?int $bookedInvoiceNumber = null;
+    public ?int $orderNumber = null;
 
     /** @var list<Line> */
     public array $lines = [];

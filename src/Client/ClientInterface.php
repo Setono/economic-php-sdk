@@ -8,6 +8,7 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Setono\Economic\Client\Endpoint\InvoicesEndpointInterface;
+use Setono\Economic\Client\Endpoint\OrdersEndpointInterface;
 use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
 use Setono\Economic\Client\Query\Query;
 use Setono\Economic\Exception\InternalServerErrorException;
@@ -43,6 +44,8 @@ interface ClientInterface
     public function get(string $uri, Query|array $query = []): ResponseInterface;
 
     public function invoices(): InvoicesEndpointInterface;
+
+    public function orders(): OrdersEndpointInterface;
 
     public function products(): ProductsEndpointInterface;
 }

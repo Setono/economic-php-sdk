@@ -16,6 +16,8 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Setono\Economic\Client\Endpoint\InvoicesEndpoint;
 use Setono\Economic\Client\Endpoint\InvoicesEndpointInterface;
+use Setono\Economic\Client\Endpoint\OrdersEndpoint;
+use Setono\Economic\Client\Endpoint\OrdersEndpointInterface;
 use Setono\Economic\Client\Endpoint\ProductsEndpoint;
 use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
 use Setono\Economic\Client\Query\Query;
@@ -30,6 +32,8 @@ final class Client implements ClientInterface, LoggerAwareInterface
     private ?ResponseInterface $lastResponse = null;
 
     private ?InvoicesEndpointInterface $invoicesEndpoint = null;
+
+    private ?OrdersEndpointInterface $ordersEndpoint = null;
 
     private ?ProductsEndpointInterface $productsEndpoint = null;
 
@@ -97,6 +101,16 @@ final class Client implements ClientInterface, LoggerAwareInterface
         }
 
         return $this->invoicesEndpoint;
+    }
+
+    public function orders(): OrdersEndpointInterface
+    {
+        if (null === $this->ordersEndpoint) {
+            $this->ordersEndpoint = new OrdersEndpoint($this, $this->getMapperBuilder());
+            $this->ordersEndpoint->setLogger($this->logger);
+        }
+
+        return $this->ordersEndpoint;
     }
 
     public function products(): ProductsEndpointInterface
