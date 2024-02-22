@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\DTO\BookedInvoice;
-use Setono\Economic\DTO\Collection;
 use Setono\Economic\Exception\NotFoundException;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Response\Collection\Collection;
+use Setono\Economic\Response\Invoice\BookedInvoice;
 
 final class InvoicesEndpoint extends Endpoint implements InvoicesEndpointInterface
 {
@@ -30,7 +30,7 @@ final class InvoicesEndpoint extends Endpoint implements InvoicesEndpointInterfa
         $collectionRequestOptions ??= new CollectionRequestOptions();
 
         /** @var class-string<Collection<BookedInvoice>> $collection */
-        $collection = 'Setono\Economic\DTO\Collection<Setono\Economic\DTO\BookedInvoice>';
+        $collection = 'Setono\Economic\Response\Collection\Collection<Setono\Economic\Response\Invoice\BookedInvoice>';
 
         return $this->mapperBuilder->mapper()->map(
             $collection,

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\DTO\Collection;
-use Setono\Economic\DTO\DraftOrder;
 use Setono\Economic\Exception\NotFoundException;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Response\Collection\Collection;
+use Setono\Economic\Response\Order\DraftOrder;
 
 final class OrdersEndpoint extends Endpoint implements OrdersEndpointInterface
 {
@@ -30,7 +30,7 @@ final class OrdersEndpoint extends Endpoint implements OrdersEndpointInterface
         $collectionRequestOptions ??= new CollectionRequestOptions();
 
         /** @var class-string<Collection<DraftOrder>> $collection */
-        $collection = 'Setono\Economic\DTO\Collection<Setono\Economic\DTO\DraftOrder>';
+        $collection = 'Setono\Economic\Response\Collection\Collection<Setono\Economic\Response\Order\DraftOrder>';
 
         return $this->mapperBuilder->mapper()->map(
             $collection,

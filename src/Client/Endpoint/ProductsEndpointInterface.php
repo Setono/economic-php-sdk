@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\DTO\Collection;
-use Setono\Economic\DTO\Product;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Response\Collection\Collection;
+use Setono\Economic\Response\Product\Product;
 
 interface ProductsEndpointInterface extends EndpointInterface
 {

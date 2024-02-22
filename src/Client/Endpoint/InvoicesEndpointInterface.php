@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\DTO\BookedInvoice;
-use Setono\Economic\DTO\Collection;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Response\Collection\Collection;
+use Setono\Economic\Response\Invoice\BookedInvoice;
 
 interface InvoicesEndpointInterface extends EndpointInterface
 {

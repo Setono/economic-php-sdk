@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Setono\Economic\DTO;
+namespace Setono\Economic\Response\Order;
+
+use Setono\Economic\Response\Line\Line;
 
 final class DraftOrder
 {

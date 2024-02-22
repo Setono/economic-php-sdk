@@ -34,32 +34,32 @@ print_r($products);
 will output something like:
 
 ```text
-Setono\Economic\DTO\Collection Object
+Setono\Economic\Response\Collection\Collection Object
 (
     [collection] => Array
         (
-            [0] => Setono\Economic\DTO\Product Object
+            [0] => Setono\Economic\Response\Product\Product Object
                 (
                     [productNumber] => 2
                     [name] => Barred product
                     [salesPrice] => 50
                 )
 
-            [1] => Setono\Economic\DTO\Product Object
+            [1] => Setono\Economic\Response\Product\Product Object
                 (
                     [productNumber] => 5
                     [name] => Fountain Pen, Blue
                     [salesPrice] => 30
                 )
 
-            [2] => Setono\Economic\DTO\Product Object
+            [2] => Setono\Economic\Response\Product\Product Object
                 (
                     [productNumber] => 1
                     [name] => Noname T-shirt Black
                     [salesPrice] => 70
                 )
 
-            [3] => Setono\Economic\DTO\Product Object
+            [3] => Setono\Economic\Response\Product\Product Object
                 (
                     [productNumber] => 3
                     [name] => SIlk Fabric
@@ -68,14 +68,14 @@ Setono\Economic\DTO\Collection Object
 
         )
 
-    [pagination] => Setono\Economic\DTO\Pagination Object
+    [pagination] => Setono\Economic\Response\Pagination\Pagination Object
         (
             [maxPageSizeAllowed] => 1000
             [skipPages] => 0
             [pageSize] => 20
             [results] => 4
             [resultsWithoutFilter] => 7
-            [firstPage] => Setono\Economic\DTO\Page Object
+            [firstPage] => Setono\Economic\Response\Pagination\Page Object
                 (
                     [endpoint] => products
                     [skipPages] => 0
@@ -83,7 +83,7 @@ Setono\Economic\DTO\Collection Object
                     [url] => https://restapi.e-conomic.com/products?skippages=0&pagesize=20&filter=name%24like%3Ab&sort=name
                 )
 
-            [lastPage] => Setono\Economic\DTO\Page Object
+            [lastPage] => Setono\Economic\Response\Pagination\Page Object
                 (
                     [endpoint] => products
                     [skipPages] => 0
@@ -140,11 +140,7 @@ When you instantiate the `Client` you can provide a `MapperBuilder` instance. Us
 ```php
 <?php
 
-use CuyZ\Valinor\Cache\FileSystemCache;
-use CuyZ\Valinor\MapperBuilder;
-use Setono\Economic\Client\Client;
-use Setono\Economic\DTO\Collection;
-use Setono\Economic\DTO\Box;
+use CuyZ\Valinor\Cache\FileSystemCache;use CuyZ\Valinor\MapperBuilder;use Setono\Economic\Client\Client;use Setono\Economic\DTO\Box;
 
 require_once '../vendor/autoload.php';
 

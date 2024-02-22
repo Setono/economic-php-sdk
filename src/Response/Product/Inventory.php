@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Setono\Economic\DTO;
+namespace Setono\Economic\Response\Product;
 
 final class Inventory
 {

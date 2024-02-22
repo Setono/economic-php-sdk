@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\DTO\Collection;
-use Setono\Economic\DTO\Product;
 use Setono\Economic\Exception\NotFoundException;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Response\Collection\Collection;
+use Setono\Economic\Response\Product\Product;
 
 final class ProductsEndpoint extends Endpoint implements ProductsEndpointInterface
 {
@@ -30,7 +30,7 @@ final class ProductsEndpoint extends Endpoint implements ProductsEndpointInterfa
         $collectionRequestOptions ??= new CollectionRequestOptions();
 
         /** @var class-string<Collection<Product>> $collection */
-        $collection = 'Setono\Economic\DTO\Collection<Setono\Economic\DTO\Product>';
+        $collection = 'Setono\Economic\Response\Collection\Collection<Setono\Economic\Response\Product\Product>';
 
         return $this->mapperBuilder->mapper()->map(
             $collection,

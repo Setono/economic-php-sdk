@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\DTO\Collection;
-use Setono\Economic\DTO\DraftOrder;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Response\Collection\Collection;
+use Setono\Economic\Response\Order\DraftOrder;
 
 interface OrdersEndpointInterface extends EndpointInterface
 {

@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Setono\Economic\DTO;
+namespace Setono\Economic\Response\Collection;
+
+use Setono\Economic\Response\Pagination\Pagination;
 
 /**
  * @template T
