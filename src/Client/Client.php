@@ -14,6 +14,8 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Setono\Economic\Client\Endpoint\InvoicesEndpoint;
+use Setono\Economic\Client\Endpoint\InvoicesEndpointInterface;
 use Setono\Economic\Client\Endpoint\ProductsEndpoint;
 use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
 use Setono\Economic\Client\Query\Query;
@@ -26,6 +28,8 @@ final class Client implements ClientInterface, LoggerAwareInterface
     private ?RequestInterface $lastRequest = null;
 
     private ?ResponseInterface $lastResponse = null;
+
+    private ?InvoicesEndpointInterface $invoicesEndpoint = null;
 
     private ?ProductsEndpointInterface $productsEndpoint = null;
 
@@ -83,6 +87,16 @@ final class Client implements ClientInterface, LoggerAwareInterface
         $request = $this->getRequestFactory()->createRequest('GET', $url);
 
         return $this->request($request);
+    }
+
+    public function invoices(): InvoicesEndpointInterface
+    {
+        if (null === $this->invoicesEndpoint) {
+            $this->invoicesEndpoint = new InvoicesEndpoint($this, $this->getMapperBuilder());
+            $this->invoicesEndpoint->setLogger($this->logger);
+        }
+
+        return $this->invoicesEndpoint;
     }
 
     public function products(): ProductsEndpointInterface

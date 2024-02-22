@@ -7,6 +7,7 @@ namespace Setono\Economic\Client;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Setono\Economic\Client\Endpoint\InvoicesEndpointInterface;
 use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
 use Setono\Economic\Client\Query\Query;
 use Setono\Economic\Exception\InternalServerErrorException;
@@ -40,6 +41,8 @@ interface ClientInterface
      * @throws UnexpectedStatusCodeException if the status code is not between 200 and 299, and it's not any of the above
      */
     public function get(string $uri, Query|array $query = []): ResponseInterface;
+
+    public function invoices(): InvoicesEndpointInterface;
 
     public function products(): ProductsEndpointInterface;
 }
