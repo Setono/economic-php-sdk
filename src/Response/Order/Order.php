@@ -6,7 +6,7 @@ namespace Setono\Economic\Response\Order;
 
 use Setono\Economic\Response\Line\Line;
 
-final class DraftOrder
+final class Order
 {
     public ?int $orderNumber = null;
 
