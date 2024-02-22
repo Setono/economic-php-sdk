@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\Client\Query\CollectionQuery;
 use Setono\Economic\DTO\BookedInvoice;
 use Setono\Economic\DTO\Collection;
 use Setono\Economic\Exception\NotFoundException;
+use Setono\Economic\Request\CollectionRequestOptions;
 
 final class InvoicesEndpoint extends Endpoint implements InvoicesEndpointInterface
 {
@@ -25,8 +25,10 @@ final class InvoicesEndpoint extends Endpoint implements InvoicesEndpointInterfa
         );
     }
 
-    public function getBooked(int $skipPages = 0, int $pageSize = 20, string $filter = null, string $sortBy = null): Collection
+    public function getBooked(CollectionRequestOptions $collectionRequestOptions = null): Collection
     {
+        $collectionRequestOptions ??= new CollectionRequestOptions();
+
         /** @var class-string<Collection<BookedInvoice>> $collection */
         $collection = 'Setono\Economic\DTO\Collection<Setono\Economic\DTO\BookedInvoice>';
 
@@ -34,7 +36,7 @@ final class InvoicesEndpoint extends Endpoint implements InvoicesEndpointInterfa
             $collection,
             $this->createSourceFromResponse($this->client->get(
                 'invoices/booked',
-                new CollectionQuery($skipPages, $pageSize, $filter, $sortBy),
+                $collectionRequestOptions->asQuery(),
             )),
         );
     }

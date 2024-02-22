@@ -6,6 +6,7 @@ namespace Setono\Economic\Client\Endpoint;
 
 use Setono\Economic\DTO\BookedInvoice;
 use Setono\Economic\DTO\Collection;
+use Setono\Economic\Request\CollectionRequestOptions;
 
 interface InvoicesEndpointInterface extends EndpointInterface
 {
@@ -19,5 +20,5 @@ interface InvoicesEndpointInterface extends EndpointInterface
      *
      * @return Collection<BookedInvoice>
      */
-    public function getBooked(int $skipPages = 0, int $pageSize = 20, string $filter = null, string $sortBy = null): Collection;
+    public function getBooked(CollectionRequestOptions $collectionRequestOptions = null): Collection;
 }

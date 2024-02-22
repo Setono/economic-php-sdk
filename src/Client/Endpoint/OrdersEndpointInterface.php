@@ -6,6 +6,7 @@ namespace Setono\Economic\Client\Endpoint;
 
 use Setono\Economic\DTO\Collection;
 use Setono\Economic\DTO\DraftOrder;
+use Setono\Economic\Request\CollectionRequestOptions;
 
 interface OrdersEndpointInterface extends EndpointInterface
 {
@@ -21,5 +22,5 @@ interface OrdersEndpointInterface extends EndpointInterface
      *
      * @return Collection<DraftOrder>
      */
-    public function getDraft(int $skipPages = 0, int $pageSize = 20, string $filter = null, string $sortBy = null): Collection;
+    public function getDraft(CollectionRequestOptions $collectionRequestOptions = null): Collection;
 }

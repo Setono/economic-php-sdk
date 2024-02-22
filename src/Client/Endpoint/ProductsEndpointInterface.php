@@ -6,6 +6,7 @@ namespace Setono\Economic\Client\Endpoint;
 
 use Setono\Economic\DTO\Collection;
 use Setono\Economic\DTO\Product;
+use Setono\Economic\Request\CollectionRequestOptions;
 
 interface ProductsEndpointInterface extends EndpointInterface
 {
@@ -14,5 +15,5 @@ interface ProductsEndpointInterface extends EndpointInterface
     /**
      * @return Collection<Product>
      */
-    public function get(int $skipPages = 0, int $pageSize = 20, string $filter = null, string $sortBy = null): Collection;
+    public function get(CollectionRequestOptions $collectionRequestOptions = null): Collection;
 }

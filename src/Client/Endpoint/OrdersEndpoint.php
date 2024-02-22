@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\Client\Query\CollectionQuery;
 use Setono\Economic\DTO\Collection;
 use Setono\Economic\DTO\DraftOrder;
 use Setono\Economic\Exception\NotFoundException;
+use Setono\Economic\Request\CollectionRequestOptions;
 
 final class OrdersEndpoint extends Endpoint implements OrdersEndpointInterface
 {
@@ -25,8 +25,10 @@ final class OrdersEndpoint extends Endpoint implements OrdersEndpointInterface
         );
     }
 
-    public function getDraft(int $skipPages = 0, int $pageSize = 20, string $filter = null, string $sortBy = null): Collection
+    public function getDraft(CollectionRequestOptions $collectionRequestOptions = null): Collection
     {
+        $collectionRequestOptions ??= new CollectionRequestOptions();
+
         /** @var class-string<Collection<DraftOrder>> $collection */
         $collection = 'Setono\Economic\DTO\Collection<Setono\Economic\DTO\DraftOrder>';
 
@@ -34,7 +36,7 @@ final class OrdersEndpoint extends Endpoint implements OrdersEndpointInterface
             $collection,
             $this->createSourceFromResponse($this->client->get(
                 'orders/drafts',
-                new CollectionQuery($skipPages, $pageSize, $filter, $sortBy),
+                $collectionRequestOptions->asQuery(),
             )),
         );
     }

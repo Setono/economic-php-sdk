@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Setono\Economic\Client\Query;
+namespace Setono\Economic\Request;
 
 class Query implements \Stringable
 {

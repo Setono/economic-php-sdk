@@ -20,10 +20,10 @@ use Setono\Economic\Client\Endpoint\OrdersEndpoint;
 use Setono\Economic\Client\Endpoint\OrdersEndpointInterface;
 use Setono\Economic\Client\Endpoint\ProductsEndpoint;
 use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
-use Setono\Economic\Client\Query\Query;
 use Setono\Economic\Exception\InternalServerErrorException;
 use Setono\Economic\Exception\NotFoundException;
 use Setono\Economic\Exception\UnexpectedStatusCodeException;
+use Setono\Economic\Request\Query;
 
 final class Client implements ClientInterface, LoggerAwareInterface
 {

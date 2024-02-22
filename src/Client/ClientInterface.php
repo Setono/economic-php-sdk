@@ -10,10 +10,10 @@ use Psr\Http\Message\ResponseInterface;
 use Setono\Economic\Client\Endpoint\InvoicesEndpointInterface;
 use Setono\Economic\Client\Endpoint\OrdersEndpointInterface;
 use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
-use Setono\Economic\Client\Query\Query;
 use Setono\Economic\Exception\InternalServerErrorException;
 use Setono\Economic\Exception\NotFoundException;
 use Setono\Economic\Exception\UnexpectedStatusCodeException;
+use Setono\Economic\Request\Query;
 
 interface ClientInterface
 {
