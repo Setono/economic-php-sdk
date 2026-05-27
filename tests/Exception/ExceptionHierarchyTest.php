@@ -55,8 +55,7 @@ final class ExceptionHierarchyTest extends TestCase
     #[DataProvider('statusCodeToExceptionProvider')]
     public function client_dispatches_correct_exception_for_status(int $status, string $expected): void
     {
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient(new FixedStatusHttpClient($status));
+        $client = new Client('app', 'agreement', httpClient: new FixedStatusHttpClient($status));
 
         try {
             $client->get('/anything');

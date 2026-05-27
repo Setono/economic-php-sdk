@@ -7,11 +7,12 @@ namespace Setono\Economic\Client;
 use Composer\InstalledVersions;
 use CuyZ\Valinor\MapperBuilder;
 use Http\Discovery\Psr17FactoryDiscovery;
-use Http\Discovery\Psr18Client;
+use Http\Discovery\Psr18ClientDiscovery;
 use Psr\Http\Client\ClientInterface as HttpClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Setono\Economic\Client\Endpoint\InvoicesEndpoint;
 use Setono\Economic\Client\Endpoint\OrdersEndpoint;
 use Setono\Economic\Client\Endpoint\ProductsEndpoint;
@@ -30,9 +31,11 @@ use Setono\Economic\Mapper\RawStamper;
 
 final class Client implements ClientInterface
 {
-    private ?RequestInterface $lastRequest = null;
+    private const string BASE_URI = 'https://restapi.e-conomic.com';
 
-    private ?ResponseInterface $lastResponse = null;
+    public private(set) ?RequestInterface $lastRequest = null;
+
+    public private(set) ?ResponseInterface $lastResponse = null;
 
     private ?InvoicesEndpoint $invoicesEndpoint = null;
 
@@ -42,24 +45,30 @@ final class Client implements ClientInterface
 
     private ?SelfEndpoint $selfEndpoint = null;
 
-    private ?HttpClientInterface $httpClient = null;
+    private readonly HttpClientInterface $httpClient;
 
-    private ?RequestFactoryInterface $requestFactory = null;
+    private readonly RequestFactoryInterface $requestFactory;
 
-    private ?MapperBuilder $mapperBuilder = null;
+    /**
+     * Pre-wired for future request-body-producing endpoints (POST/PUT).
+     * Stored but not consumed by any current internal code.
+     */
+    private readonly StreamFactoryInterface $streamFactory;
 
-    public function __construct(private readonly string $appSecretToken, private readonly string $agreementGrantToken)
-    {
-    }
+    private readonly MapperBuilder $mapperBuilder;
 
-    public function getLastRequest(): ?RequestInterface
-    {
-        return $this->lastRequest;
-    }
-
-    public function getLastResponse(): ?ResponseInterface
-    {
-        return $this->lastResponse;
+    public function __construct(
+        private readonly string $appSecretToken,
+        private readonly string $agreementGrantToken,
+        ?HttpClientInterface $httpClient = null,
+        ?RequestFactoryInterface $requestFactory = null,
+        ?StreamFactoryInterface $streamFactory = null,
+        ?MapperBuilder $mapperBuilder = null,
+    ) {
+        $this->httpClient = $httpClient ?? Psr18ClientDiscovery::find();
+        $this->requestFactory = $requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
+        $this->streamFactory = $streamFactory ?? Psr17FactoryDiscovery::findStreamFactory();
+        $this->mapperBuilder = $mapperBuilder ?? self::defaultMapperBuilder();
     }
 
     public function request(RequestInterface $request): ResponseInterface
@@ -70,7 +79,7 @@ final class Client implements ClientInterface
             ->withHeader('User-Agent', $this->userAgent())
         ;
 
-        $response = $this->getHttpClient()->sendRequest($request);
+        $response = $this->httpClient->sendRequest($request);
 
         $this->lastRequest = $request;
         $this->lastResponse = $response;
@@ -99,9 +108,10 @@ final class Client implements ClientInterface
     {
         $url = $this->resolveUrl($uri, $query);
 
-        $request = $this->getRequestFactory()->createRequest('GET', $url);
+        $request = $this->requestFactory->createRequest('GET', $url);
+        $response = $this->request($request);
 
-        return $this->decodeJson($this->request($request));
+        return self::decodeJson($request, $response);
     }
 
     /**
@@ -110,7 +120,7 @@ final class Client implements ClientInterface
     private function resolveUrl(string $uri, array $query): string
     {
         if (preg_match('#^https?://#i', $uri) === 1) {
-            $baseHost = parse_url($this->getBaseUri(), \PHP_URL_HOST);
+            $baseHost = parse_url(self::BASE_URI, \PHP_URL_HOST);
             $uriHost = parse_url($uri, \PHP_URL_HOST);
 
             if ($baseHost !== $uriHost) {
@@ -118,7 +128,7 @@ final class Client implements ClientInterface
                     'Refusing to send a request to host "%s" — the e-conomic base host is "%s". '
                     . 'The SDK only sends auth credentials to its configured host.',
                     $uriHost ?? '(unparseable)',
-                    $baseHost ?? '(unparseable)',
+                    $baseHost,
                 ));
             }
 
@@ -131,7 +141,14 @@ final class Client implements ClientInterface
             return $uri;
         }
 
-        $url = sprintf('%s/%s', $this->getBaseUri(), ltrim($uri, '/'));
+        if ([] !== $query && str_contains($uri, '?')) {
+            throw new InvalidUrlException(
+                'The $query parameter cannot be combined with a URI that already contains a query string — '
+                . 'pick one source of the query string, not both.',
+            );
+        }
+
+        $url = sprintf('%s/%s', self::BASE_URI, ltrim($uri, '/'));
 
         if ([] !== $query) {
             $url .= '?' . http_build_query($query, '', '&', \PHP_QUERY_RFC3986);
@@ -142,60 +159,47 @@ final class Client implements ClientInterface
 
     public function invoices(): InvoicesEndpoint
     {
-        return $this->invoicesEndpoint ??= new InvoicesEndpoint($this, $this->getMapperBuilder());
+        return $this->invoicesEndpoint ??= new InvoicesEndpoint($this, $this->mapperBuilder);
     }
 
     public function orders(): OrdersEndpoint
     {
-        return $this->ordersEndpoint ??= new OrdersEndpoint($this, $this->getMapperBuilder());
+        return $this->ordersEndpoint ??= new OrdersEndpoint($this, $this->mapperBuilder);
     }
 
     public function products(): ProductsEndpoint
     {
-        return $this->productsEndpoint ??= new ProductsEndpoint($this, $this->getMapperBuilder());
+        return $this->productsEndpoint ??= new ProductsEndpoint($this, $this->mapperBuilder);
     }
 
     public function self(): SelfEndpoint
     {
-        return $this->selfEndpoint ??= new SelfEndpoint($this, $this->getMapperBuilder());
+        return $this->selfEndpoint ??= new SelfEndpoint($this, $this->mapperBuilder);
     }
 
-    public function setMapperBuilder(MapperBuilder $mapperBuilder): void
+    /**
+     * Exposes the resolved PSR-17 stream factory so future request-body-producing endpoints
+     * (and consumers building custom PSR-7 requests for {@see self::request()}) can reuse it
+     * instead of discovering or constructing their own.
+     */
+    public function getStreamFactory(): StreamFactoryInterface
     {
-        $this->mapperBuilder = $mapperBuilder;
+        return $this->streamFactory;
     }
 
-    private function getMapperBuilder(): MapperBuilder
+    /**
+     * The default Valinor {@see MapperBuilder} the SDK uses when no consumer-supplied builder
+     * is injected. See {@see RawStamper} for the rationale on the registered converter.
+     */
+    private static function defaultMapperBuilder(): MapperBuilder
     {
-        if (null === $this->mapperBuilder) {
-            $this->mapperBuilder = new MapperBuilder()
-                ->allowScalarValueCasting()
-                ->allowNonSequentialList()
-                ->allowUndefinedValues()
-                ->allowSuperfluousKeys()
-                // Stamp $raw on every Resource (envelope + items inside Collection<X>) as Valinor
-                // maps it — see {@see RawStamper} for rationale on the template bound, the
-                // class-vs-closure choice, and the purity suppression.
-                ->registerConverter(new RawStamper())
-            ;
-        }
-
-        return $this->mapperBuilder;
-    }
-
-    public function setHttpClient(?HttpClientInterface $httpClient): void
-    {
-        $this->httpClient = $httpClient;
-    }
-
-    public function setRequestFactory(?RequestFactoryInterface $requestFactory): void
-    {
-        $this->requestFactory = $requestFactory;
-    }
-
-    private function getBaseUri(): string
-    {
-        return 'https://restapi.e-conomic.com';
+        return new MapperBuilder()
+            ->allowScalarValueCasting()
+            ->allowNonSequentialList()
+            ->allowUndefinedValues()
+            ->allowSuperfluousKeys()
+            ->registerConverter(new RawStamper())
+        ;
     }
 
     private function userAgent(): string
@@ -205,32 +209,15 @@ final class Client implements ClientInterface
         return sprintf('Setono-Economic-PHP/%s (+https://github.com/Setono/economic-php-sdk)', $version);
     }
 
-    private function getHttpClient(): HttpClientInterface
-    {
-        if (null === $this->httpClient) {
-            $this->httpClient = new Psr18Client();
-        }
-
-        return $this->httpClient;
-    }
-
-    private function getRequestFactory(): RequestFactoryInterface
-    {
-        if (null === $this->requestFactory) {
-            $this->requestFactory = Psr17FactoryDiscovery::findRequestFactory();
-        }
-
-        return $this->requestFactory;
-    }
-
     /**
      * @return array<string, mixed>
      *
-     * @throws \RuntimeException if the body is not valid JSON or does not decode to an object
+     * @throws MalformedResponseException if the body is not valid JSON or does not decode to an object
      */
-    private function decodeJson(ResponseInterface $response): array
+    private static function decodeJson(RequestInterface $request, ResponseInterface $response): array
     {
         $body = (string) $response->getBody();
+        $context = sprintf(' [%s %s]', $request->getMethod(), (string) $request->getUri());
 
         try {
             $decoded = json_decode($body, true, flags: \JSON_THROW_ON_ERROR);
@@ -239,7 +226,7 @@ final class Client implements ClientInterface
                 $response,
                 sprintf(
                     'Could not decode response body as JSON%s: %s. Body excerpt: %s',
-                    $this->requestContext(),
+                    $context,
                     $e->getMessage(),
                     self::excerpt($body),
                 ),
@@ -253,7 +240,7 @@ final class Client implements ClientInterface
                 sprintf(
                     'Expected decoded response body to be an array but got %s%s. Body excerpt: %s',
                     get_debug_type($decoded),
-                    $this->requestContext(),
+                    $context,
                     self::excerpt($body),
                 ),
             );
@@ -263,15 +250,6 @@ final class Client implements ClientInterface
         $result = $decoded;
 
         return $result;
-    }
-
-    private function requestContext(): string
-    {
-        if (null === $this->lastRequest) {
-            return '';
-        }
-
-        return sprintf(' [%s %s]', $this->lastRequest->getMethod(), (string) $this->lastRequest->getUri());
     }
 
     private static function excerpt(string $body, int $maxLen = 500): string

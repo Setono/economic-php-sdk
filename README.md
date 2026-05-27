@@ -191,22 +191,55 @@ $response = $client->request($request);   // PSR-7 ResponseInterface
 
 Auth headers, `User-Agent`, and status-code dispatch all apply to both paths.
 
+## Bringing your own HTTP client
+
+The SDK follows the [PSR-18](https://www.php-fig.org/psr/psr-18/) "bring your own HTTP client" pattern: every collaborator is constructor-injected with sensible defaults. By default it discovers whatever PSR-18 / PSR-17 implementations you already have installed:
+
+```php
+<?php
+
+use Setono\Economic\Client\Client;
+
+require_once 'vendor/autoload.php';
+
+// Zero config — discovery finds the PSR-18 client and PSR-17 factories that are installed.
+$client = new Client('API_KEY', 'API_SECRET');
+```
+
+Inject your own client when you need control over the transport — for example to add retries via Symfony's `HttpClient` decorators:
+
+```php
+<?php
+
+use Setono\Economic\Client\Client;
+use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\HttpClient\Psr18Client;
+
+$psr18 = new Psr18Client(HttpClient::create(['max_retries' => 3]));
+
+$client = new Client('API_KEY', 'API_SECRET', httpClient: $psr18);
+```
+
+There is no built-in logger. Wrap your PSR-18 client to log: any PSR-18-compatible middleware composition (Symfony's `LoggingHttpClient`, the [HTTPlug](https://docs.php-http.org/) plugin stack, etc.) works as-is — the SDK never reaches around the injected client.
+
 ## Production usage
 
 Internally this library uses the [CuyZ/Valinor](https://github.com/CuyZ/Valinor) library which is particularly well suited
 for turning API responses in DTOs. However, this library has some overhead and works best with a cache enabled.
 
-When you instantiate the `Client` you can provide a `MapperBuilder` instance. Use this opportunity to set a cache:
+When you instantiate the `Client` you can provide a `MapperBuilder` instance via the `mapperBuilder` named argument. Use this opportunity to set a cache:
 
 ```php
 <?php
 
-use CuyZ\Valinor\Cache\FileSystemCache;use CuyZ\Valinor\MapperBuilder;use Setono\Economic\Client\Client;use Setono\Economic\DTO\Box;
+use CuyZ\Valinor\Cache\FileSystemCache;
+use CuyZ\Valinor\MapperBuilder;
+use Setono\Economic\Client\Client;
 
 require_once '../vendor/autoload.php';
 
 $cache = new FileSystemCache('path/to/cache-directory');
-$client = new Client('API_KEY', 'API_SECRET', (new MapperBuilder())->withCache($cache));
+$client = new Client('API_KEY', 'API_SECRET', mapperBuilder: (new MapperBuilder())->withCache($cache));
 ```
 
 You can read more about it here: [Valinor: Performance and caching](https://valinor.cuyz.io/latest/other/performance-and-cache/).

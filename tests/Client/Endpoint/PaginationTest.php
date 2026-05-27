@@ -41,8 +41,7 @@ final class PaginationTest extends TestCase
                 self::pageJson(['p3a', 'p3b', 'p3c'], nextUrl: null),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $names = [];
         foreach ($client->products()->paginate(new CollectionRequestOptions(filter: 'name$like:b')) as $product) {
@@ -63,8 +62,7 @@ final class PaginationTest extends TestCase
                 self::pageJsonOrders([1, 2], nextUrl: null),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $numbers = [];
         foreach ($client->orders()->drafts()->paginate() as $order) {
@@ -85,8 +83,7 @@ final class PaginationTest extends TestCase
                 self::pageJsonOrders([], nextUrl: null),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $count = 0;
         foreach ($client->orders()->drafts()->paginate() as $_) {
@@ -106,8 +103,7 @@ final class PaginationTest extends TestCase
                 self::pageJsonOrders([10], nextUrl: null),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $items = iterator_to_array($client->orders()->sent()->paginate(), false);
 
@@ -129,8 +125,7 @@ final class PaginationTest extends TestCase
                 self::pageJsonInvoices([102], nextUrl: null),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $numbers = [];
         foreach ($client->invoices()->booked()->paginate() as $invoice) {

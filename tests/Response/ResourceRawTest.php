@@ -26,8 +26,7 @@ final class ResourceRawTest extends TestCase
                 '{"productNumber":"5","name":"Foo","costPrice":12.34,"unit":{"name":"kg"}}',
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $product = $client->products()->getByNumber('5');
 
@@ -65,8 +64,7 @@ final class ResourceRawTest extends TestCase
                 (string) json_encode($envelope),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $page = $client->products()->getPage();
 
@@ -101,8 +99,7 @@ final class ResourceRawTest extends TestCase
                 (string) json_encode($envelope),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $page = $client->products()->getPage();
 
@@ -140,8 +137,7 @@ final class ResourceRawTest extends TestCase
                 (string) json_encode($envelope),
             );
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $items = iterator_to_array($client->products()->paginate(), false);
 

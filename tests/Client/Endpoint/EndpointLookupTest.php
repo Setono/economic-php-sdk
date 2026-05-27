@@ -29,8 +29,7 @@ final class EndpointLookupTest extends TestCase
         $http = new ScriptedHttpClient()
             ->on('https://restapi.e-conomic.com/products/5', '{"productNumber":"5","name":"Foo"}');
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $product = $client->products()->getByNumber('5');
 
@@ -45,8 +44,7 @@ final class EndpointLookupTest extends TestCase
         $http = new ScriptedHttpClient()
             ->on('https://restapi.e-conomic.com/products/missing', new Response(404));
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         self::assertNull($client->products()->getByNumber('missing'));
     }
@@ -57,8 +55,7 @@ final class EndpointLookupTest extends TestCase
         $http = new ScriptedHttpClient()
             ->on('https://restapi.e-conomic.com/orders/drafts/42', '{"orderNumber":42}');
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $order = $client->orders()->drafts()->getByNumber(42);
 
@@ -72,8 +69,7 @@ final class EndpointLookupTest extends TestCase
         $http = new ScriptedHttpClient()
             ->on('https://restapi.e-conomic.com/orders/sent/77', '{"orderNumber":77}');
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $order = $client->orders()->sent()->getByNumber(77);
 
@@ -87,8 +83,7 @@ final class EndpointLookupTest extends TestCase
         $http = new ScriptedHttpClient()
             ->on('https://restapi.e-conomic.com/invoices/booked/9001', '{"bookedInvoiceNumber":9001}');
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $invoice = $client->invoices()->booked()->getByNumber(9001);
 
@@ -102,8 +97,7 @@ final class EndpointLookupTest extends TestCase
         $http = new ScriptedHttpClient()
             ->on('https://restapi.e-conomic.com/self', '{"loggedInUserType":"User","serverTime":"2026-01-01T00:00:00Z"}');
 
-        $client = new Client('app', 'agreement');
-        $client->setHttpClient($http);
+        $client = new Client('app', 'agreement', httpClient: $http);
 
         $first = $client->self()->get();
         $second = $client->self()->get();

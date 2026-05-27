@@ -16,14 +16,14 @@ use Setono\Economic\Exception\EconomicException;
 interface ClientInterface
 {
     /**
-     * Returns the last request sent to the API if any requests has been sent
+     * The last request sent to the API, or `null` if no request has been dispatched yet.
      */
-    public function getLastRequest(): ?RequestInterface;
+    public ?RequestInterface $lastRequest { get; }
 
     /**
-     * Returns the last response from the API, if any responses has been received
+     * The last response received from the API, or `null` if no response has been received yet.
      */
-    public function getLastResponse(): ?ResponseInterface;
+    public ?ResponseInterface $lastResponse { get; }
 
     /**
      * @throws ClientExceptionInterface if an error happens while processing the request
