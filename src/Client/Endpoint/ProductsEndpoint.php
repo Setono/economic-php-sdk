@@ -4,40 +4,28 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\Exception\NotFoundException;
-use Setono\Economic\Request\CollectionRequestOptions;
-use Setono\Economic\Response\Collection\Collection;
 use Setono\Economic\Response\Product\Product;
 
-final class ProductsEndpoint extends Endpoint implements ProductsEndpointInterface
+/**
+ * @extends CollectionEndpoint<Product>
+ */
+final class ProductsEndpoint extends CollectionEndpoint
 {
     public function getByNumber(string $number): ?Product
     {
-        try {
-            $response = $this->client->get(sprintf('products/%s', $number));
-        } catch (NotFoundException) {
-            return null;
-        }
-
-        return $this->mapperBuilder->mapper()->map(
-            Product::class,
-            $this->createSourceFromResponse($response),
-        );
+        return $this->getItem($number);
     }
 
-    public function get(CollectionRequestOptions $collectionRequestOptions = null): Collection
+    protected static function getPath(): string
     {
-        $collectionRequestOptions ??= new CollectionRequestOptions();
+        return 'products';
+    }
 
-        /** @var class-string<Collection<Product>> $collection */
-        $collection = 'Setono\Economic\Response\Collection\Collection<Setono\Economic\Response\Product\Product>';
-
-        return $this->mapperBuilder->mapper()->map(
-            $collection,
-            $this->createSourceFromResponse($this->client->get(
-                'products',
-                $collectionRequestOptions->asQuery(),
-            )),
-        );
+    /**
+     * @return class-string<Product>
+     */
+    protected static function getItemClass(): string
+    {
+        return Product::class;
     }
 }

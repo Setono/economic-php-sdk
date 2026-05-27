@@ -4,70 +4,26 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use Setono\Economic\Exception\NotFoundException;
-use Setono\Economic\Request\CollectionRequestOptions;
-use Setono\Economic\Response\Collection\Collection;
-use Setono\Economic\Response\Order\Order;
+use Setono\Economic\Client\Endpoint\Orders\DraftOrdersEndpoint;
+use Setono\Economic\Client\Endpoint\Orders\SentOrdersEndpoint;
 
-final class OrdersEndpoint extends Endpoint implements OrdersEndpointInterface
+/**
+ * Dispatcher endpoint for `/orders`. Owns no collection methods itself — it lazily
+ * exposes state-specific leaf sub-endpoints (`drafts()`, `sent()`).
+ */
+final class OrdersEndpoint extends Endpoint
 {
-    public function getDraftByNumber(int $number): ?Order
-    {
-        try {
-            $response = $this->client->get(sprintf('orders/drafts/%d', $number));
-        } catch (NotFoundException) {
-            return null;
-        }
+    private ?DraftOrdersEndpoint $drafts = null;
 
-        return $this->mapperBuilder->mapper()->map(
-            Order::class,
-            $this->createSourceFromResponse($response),
-        );
+    private ?SentOrdersEndpoint $sent = null;
+
+    public function drafts(): DraftOrdersEndpoint
+    {
+        return $this->drafts ??= new DraftOrdersEndpoint($this->client, $this->mapperBuilder);
     }
 
-    public function getDraft(CollectionRequestOptions $collectionRequestOptions = null): Collection
+    public function sent(): SentOrdersEndpoint
     {
-        $collectionRequestOptions ??= new CollectionRequestOptions();
-
-        /** @var class-string<Collection<Order>> $collection */
-        $collection = 'Setono\Economic\Response\Collection\Collection<Setono\Economic\Response\Order\Order>';
-
-        return $this->mapperBuilder->mapper()->map(
-            $collection,
-            $this->createSourceFromResponse($this->client->get(
-                'orders/drafts',
-                $collectionRequestOptions->asQuery(),
-            )),
-        );
-    }
-
-    public function getSentByNumber(int $number): ?Order
-    {
-        try {
-            $response = $this->client->get(sprintf('orders/sent/%d', $number));
-        } catch (NotFoundException) {
-            return null;
-        }
-
-        return $this->mapperBuilder->mapper()->map(
-            Order::class,
-            $this->createSourceFromResponse($response),
-        );
-    }
-
-    public function getSent(CollectionRequestOptions $collectionRequestOptions = null): Collection
-    {
-        $collectionRequestOptions ??= new CollectionRequestOptions();
-
-        /** @var class-string<Collection<Order>> $collection */
-        $collection = 'Setono\Economic\Response\Collection\Collection<Setono\Economic\Response\Order\Order>';
-
-        return $this->mapperBuilder->mapper()->map(
-            $collection,
-            $this->createSourceFromResponse($this->client->get(
-                'orders/sent',
-                $collectionRequestOptions->asQuery(),
-            )),
-        );
+        return $this->sent ??= new SentOrdersEndpoint($this->client, $this->mapperBuilder);
     }
 }

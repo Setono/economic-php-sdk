@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Response\Pagination;
 
-final class Pagination
+final readonly class Pagination
 {
     public function __construct(
-        public readonly int $maxPageSizeAllowed,
-        public readonly int $skipPages,
-        public readonly int $pageSize,
-        public readonly int $results,
-        public readonly int $resultsWithoutFilter,
-        public readonly ?Page $firstPage = null,
-        public readonly ?Page $lastPage = null,
-        public readonly ?Page $nextPage = null,
+        public int $maxPageSizeAllowed,
+        public int $skipPages,
+        public int $pageSize,
+        public int $results,
+        public int $resultsWithoutFilter,
+        public ?Page $firstPage = null,
+        public ?Page $lastPage = null,
+        public ?Page $nextPage = null,
     ) {
     }
 }

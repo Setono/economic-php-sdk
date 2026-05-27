@@ -1,0 +1,13 @@
+includes:
+    # Valinor 2.x ships PHPStan extensions: type inference for mapper()->map() and ArgumentsMapper,
+    # plus an opt-in extension that suppresses purity errors on registerConverter / registerTransformer /
+    # registerConstructor / infer (where the docblock declares @pure but real-world converters often
+    # need side effects, e.g. our RawStamper that mutates Resource::$raw).
+    - vendor/cuyz/valinor/qa/PHPStan/valinor-phpstan-configuration.php
+    - vendor/cuyz/valinor/qa/PHPStan/valinor-phpstan-suppress-pure-errors.php
+
+parameters:
+    level: max
+    paths:
+        - src
+        - tests

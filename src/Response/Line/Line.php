@@ -6,11 +6,12 @@ namespace Setono\Economic\Response\Line;
 
 use Setono\Economic\Response\Product\Product;
 
-final class Line
+final readonly class Line
 {
-    public ?int $lineNumber = null;
-
-    public ?Product $product = null;
-
-    public ?float $quantity = null;
+    public function __construct(
+        public ?int $lineNumber = null,
+        public ?Product $product = null,
+        public ?float $quantity = null,
+    ) {
+    }
 }

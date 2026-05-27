@@ -6,16 +6,17 @@ namespace Setono\Economic\Request;
 
 use Webmozart\Assert\Assert;
 
-final class CollectionRequestOptions
+final readonly class CollectionRequestOptions
 {
     public function __construct(
-        public readonly int $skipPages = 0,
-        public readonly int $pageSize = 20,
-        public readonly ?string $filter = null,
-        public readonly ?string $sortBy = null,
+        public int $skipPages = 0,
+        public int $pageSize = 20,
+        public ?string $filter = null,
+        public ?string $sortBy = null,
     ) {
         Assert::greaterThanEq($skipPages, 0);
         Assert::greaterThanEq($pageSize, 1);
+        Assert::lessThanEq($pageSize, 1000);
     }
 
     public static function new(): self
@@ -43,13 +44,16 @@ final class CollectionRequestOptions
         return new self($this->skipPages, $this->pageSize, $this->filter, $sortBy);
     }
 
-    public function asQuery(): Query
+    /**
+     * @return array<string, scalar|null>
+     */
+    public function toArray(): array
     {
-        return new Query([
+        return [
             'skippages' => $this->skipPages,
             'pagesize' => $this->pageSize,
             'filter' => $this->filter,
             'sort' => $this->sortBy,
-        ]);
+        ];
     }
 }

@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Response\Product;
 
-final class Product
+use Setono\Economic\Response\Resource;
+
+final class Product extends Resource
 {
-    public ?string $productNumber = null;
-
-    public ?string $name = null;
-
-    public ?float $salesPrice = null;
-
-    public ?Inventory $inventory = null;
+    public function __construct(
+        public readonly ?string $productNumber = null,
+        public readonly ?string $name = null,
+        public readonly ?float $salesPrice = null,
+        public readonly ?Inventory $inventory = null,
+    ) {
+    }
 }

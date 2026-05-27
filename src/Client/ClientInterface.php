@@ -7,13 +7,11 @@ namespace Setono\Economic\Client;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use Setono\Economic\Client\Endpoint\InvoicesEndpointInterface;
-use Setono\Economic\Client\Endpoint\OrdersEndpointInterface;
-use Setono\Economic\Client\Endpoint\ProductsEndpointInterface;
-use Setono\Economic\Exception\InternalServerErrorException;
-use Setono\Economic\Exception\NotFoundException;
-use Setono\Economic\Exception\UnexpectedStatusCodeException;
-use Setono\Economic\Request\Query;
+use Setono\Economic\Client\Endpoint\InvoicesEndpoint;
+use Setono\Economic\Client\Endpoint\OrdersEndpoint;
+use Setono\Economic\Client\Endpoint\ProductsEndpoint;
+use Setono\Economic\Client\Endpoint\SelfEndpoint;
+use Setono\Economic\Exception\EconomicException;
 
 interface ClientInterface
 {
@@ -29,23 +27,40 @@ interface ClientInterface
 
     /**
      * @throws ClientExceptionInterface if an error happens while processing the request
-     * @throws InternalServerErrorException if the server reports an internal server error
-     * @throws NotFoundException if the request results in a 404
-     * @throws UnexpectedStatusCodeException if the status code is not between 200 and 299, and it's not any of the above
+     * @throws EconomicException if the response is non-2xx (concrete subtype depends on the status code)
      */
     public function request(RequestInterface $request): ResponseInterface;
 
     /**
+     * GET the given URI and return the decoded JSON body. `$uri` may be either:
+     *  - a path relative to the e-conomic base URI (e.g. `"products"`), in which case `$query` is appended.
+     *  - a fully-qualified URL pointing at the e-conomic API host (e.g. a `pagination.nextPage.url`),
+     *    in which case `$query` MUST be empty.
+     *
+     * Absolute URLs that don't match the e-conomic base host are rejected — the SDK refuses to leak
+     * auth credentials to a different host.
+     *
+     * For non-JSON endpoints (e.g. PDF or attachment file downloads), build a PSR-7 request and
+     * use {@see self::request()} instead.
+     *
+     * @param array<string, scalar|null> $query
+     *
+     * @return array<string, mixed>
+     *
+     * @throws \Setono\Economic\Exception\InvalidUrlException if `$uri` is absolute and points to a different host
+     *     than the base URI, or if absolute `$uri` is combined with a non-empty `$query`
      * @throws ClientExceptionInterface if an error happens while processing the request
-     * @throws InternalServerErrorException if the server reports an internal server error
-     * @throws NotFoundException if the request results in a 404
-     * @throws UnexpectedStatusCodeException if the status code is not between 200 and 299, and it's not any of the above
+     * @throws EconomicException if the response is non-2xx (concrete subtype depends on the status code)
+     * @throws \Setono\Economic\Exception\MalformedResponseException if the response body is not valid JSON
+     *     or does not decode to an object
      */
-    public function get(string $uri, Query|array $query = []): ResponseInterface;
+    public function get(string $uri, array $query = []): array;
 
-    public function invoices(): InvoicesEndpointInterface;
+    public function invoices(): InvoicesEndpoint;
 
-    public function orders(): OrdersEndpointInterface;
+    public function orders(): OrdersEndpoint;
 
-    public function products(): ProductsEndpointInterface;
+    public function products(): ProductsEndpoint;
+
+    public function self(): SelfEndpoint;
 }

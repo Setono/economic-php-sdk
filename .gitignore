@@ -1,5 +1,9 @@
 /vendor/
 /composer.lock
+/.phpunit.cache/
 /.phpunit.result.cache
+/phpstan.neon
 /phpunit.xml
 /.build/
+/.claude/
+/bin/

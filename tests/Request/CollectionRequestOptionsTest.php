@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Request;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass(CollectionRequestOptions::class)]
 final class CollectionRequestOptionsTest extends TestCase
 {
-    /**
-     * @test
-     */
+    #[Test]
     public function it_has_defaults(): void
     {
         $options = new CollectionRequestOptions();
@@ -21,41 +22,69 @@ final class CollectionRequestOptionsTest extends TestCase
         self::assertNull($options->sortBy);
     }
 
-    /**
-     * @test
-     */
-    public function it_can_return_query(): void
+    #[Test]
+    public function it_serializes_to_array(): void
     {
         $options = new CollectionRequestOptions(0, 20, 'name$like:b', 'name');
-        $query = $options->asQuery();
 
-        self::assertSame('skippages=0&pagesize=20&filter=name%24like%3Ab&sort=name', $query->toString());
+        self::assertSame([
+            'skippages' => 0,
+            'pagesize' => 20,
+            'filter' => 'name$like:b',
+            'sort' => 'name',
+        ], $options->toArray());
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function it_throws_exception_if_skip_pages_is_negative(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         new CollectionRequestOptions(-1);
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function it_throws_exception_if_page_size_is_zero(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         new CollectionRequestOptions(pageSize: 0);
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function it_throws_exception_if_page_size_is_negative(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         new CollectionRequestOptions(pageSize: -1);
+    }
+
+    #[Test]
+    public function it_throws_exception_if_page_size_exceeds_server_maximum(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new CollectionRequestOptions(pageSize: 1001);
+    }
+
+    #[Test]
+    public function it_accepts_page_size_at_server_maximum(): void
+    {
+        $this->expectNotToPerformAssertions();
+        new CollectionRequestOptions(pageSize: 1000);
+    }
+
+    #[Test]
+    public function with_builders_produce_new_instances(): void
+    {
+        $a = new CollectionRequestOptions();
+        $b = $a->withSkipPages(5);
+        $c = $b->withPageSize(50);
+        $d = $c->withFilter('foo')->withSortBy('bar');
+
+        self::assertNotSame($a, $b);
+        self::assertNotSame($b, $c);
+        self::assertNotSame($c, $d);
+        self::assertSame(0, $a->skipPages);
+        self::assertSame(5, $b->skipPages);
+        self::assertSame(50, $c->pageSize);
+        self::assertSame('foo', $d->filter);
+        self::assertSame('bar', $d->sortBy);
     }
 }
