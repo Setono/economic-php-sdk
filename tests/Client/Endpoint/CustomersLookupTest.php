@@ -51,11 +51,11 @@ final class CustomersLookupTest extends TestCase
     }
 
     #[Test]
-    public function customers_get_by_number_leaves_untyped_fields_in_raw(): void
+    public function customers_get_by_number_keeps_typed_fields_in_raw_and_leaves_link_blobs_untyped(): void
     {
-        // Reference objects (customerGroup, vatZone, paymentTerms, …) and HATEOAS link blobs
-        // (invoices, contacts, …) are NOT typed on the Customer DTO — consumers reach them
-        // through $raw.
+        // Reference objects (customerGroup, paymentTerms, …) are typed on the Customer DTO,
+        // but $raw still carries their original array slices. HATEOAS link blobs (invoices,
+        // contacts, …) remain raw-only.
         $body = json_encode([
             'customerNumber' => 1,
             'name' => 'Acme',
