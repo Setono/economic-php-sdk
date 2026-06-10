@@ -41,6 +41,11 @@ final class CustomersEndpoint extends CollectionEndpoint
      * `defaultDeliveryLocation`, …) — is cleared server-side. Use
      * {@see CustomerRequest::fromResponse()} to prefill a request from a fetched customer,
      * or hand-build the body and use `Client::request()` for unmodeled fields.
+     *
+     * Exception: `eInvoicingDisabledByDefault` is "updatable only by using PATCH to
+     * /customers/:customerNumber" per the e-conomic docs — its value in a PUT body is
+     * ignored, so changing it on `$request` has no effect through this method (and it is
+     * not cleared by omission either).
      */
     public function update(int $number, CustomerRequest $request): Customer
     {

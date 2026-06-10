@@ -296,6 +296,8 @@ $updated = $client->customers()->update(42, $request);
 
 **Caveat:** schema fields the SDK doesn't model (`priceGroup`, `customerContact`, `attention`, `defaultDeliveryLocation`, …) cannot be carried over and **will be cleared** by an update built this way. If you use those fields, hand-build the body and dispatch via `Client::request()`.
 
+**Caveat on `eInvoicingDisabledByDefault`:** the e-conomic docs state this property "is updatable only by using PATCH to /customers/:customerNumber" — the API's one exception to its no-PATCH-on-JSON rule. Its value in a PUT body is ignored, so changing it via `update()` has no effect (it is not cleared by omission either). To toggle it, send a JSON Patch request via `Client::request()`.
+
 ## Error handling
 
 The SDK uses two distinct error patterns for reads and writes:

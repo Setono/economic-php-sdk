@@ -87,6 +87,10 @@ final class CustomerRequest implements Payload
      * an update built from this request. Hand-build the body and use `Client::request()` if you
      * need to preserve them.
      *
+     * Note on `eInvoicingDisabledByDefault`: per the e-conomic docs it is "updatable only by
+     * using PATCH to /customers/:customerNumber" — mutating it on the prefilled request has no
+     * effect through `update()` (PUT ignores it; it is not cleared by omission either).
+     *
      * @throws \InvalidArgumentException if a required field is missing from `$existing` (null
      *     typed field or absent `$raw` reference object) or if present raw data is malformed
      */
