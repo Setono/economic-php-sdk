@@ -6,24 +6,35 @@ namespace Setono\Economic\Request\Customer;
 
 use Setono\Economic\Request\Identifier;
 use Setono\Economic\Request\Payload;
+use Setono\Economic\Response\Customer\Customer;
 use Webmozart\Assert\Assert;
 
 /**
- * Typed request body for `POST /customers`. Required fields are non-nullable constructor
- * arguments; optional fields default to `null` and are omitted from the serialized JSON via
- * the SDK's `Payload` null-skipping transformer.
+ * Typed request body for `POST /customers` and `PUT /customers/:number`. Required fields are
+ * non-nullable constructor arguments; optional fields default to `null` and are omitted from
+ * the serialized JSON via the SDK's `Payload` null-skipping transformer.
+ *
+ * Deliberately mutable (NOT `readonly`): e-conomic updates are full-replace PUT, so the
+ * read-modify-write flow is "prefill via the inherited {@see Payload::fromResponse()}
+ * (`CustomerRequest::fromResponse($customer)`) → assign the fields to change →
+ * `CustomersEndpoint::update()`". The constructor `Assert` guards run at construction
+ * time only.
  *
  * Read-only server-computed fields (`balance`, `dueAmount`, `lastUpdated`, …) are intentionally
- * absent — they belong on the {@see \Setono\Economic\Response\Customer\Customer} response side.
+ * absent — they belong on the {@see Customer} response side.
  *
  * The schema's `priceGroup` field is NOT exposed here. Its schema shape is `{ self: string(uri) }`
  * with no `priceGroupNumber`, breaking the universal `{<x>Number: int}` identifier convention.
  * Consumers needing to set `priceGroup` use `Client::post('customers', $hand_built_payload)`
  * directly. See `openspec/changes/archive/<date>-create-customer/design.md` for the rationale.
  *
+ * Note on `eInvoicingDisabledByDefault`: per the e-conomic docs it is "updatable only by
+ * using PATCH to /customers/:customerNumber" — mutating it on a prefilled request has no
+ * effect through `update()` (PUT ignores it; it is not cleared by omission either).
+ *
  * `customerNumber` is optional — when null, e-conomic auto-assigns one server-side.
  */
-final readonly class CustomerRequest implements Payload
+final class CustomerRequest extends Payload
 {
     public function __construct(
         public string $name,

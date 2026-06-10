@@ -19,8 +19,12 @@ use Webmozart\Assert\Assert;
  *
  * The conditional schema rule "`dueDate` is required when `paymentTermsType` is
  * `duedate`" is enforced by the e-conomic server; the SDK does not duplicate it.
+ *
+ * Deliberately mutable (NOT `readonly`): e-conomic updates are full-replace PUT, so the
+ * read-modify-write flow is "build/prefill a request → assign the fields to change →
+ * `update()`". The constructor `Assert` guards run at construction time only.
  */
-final readonly class DraftOrderRequest implements Payload
+final class DraftOrderRequest extends Payload
 {
     /**
      * @param list<Line>|null $lines

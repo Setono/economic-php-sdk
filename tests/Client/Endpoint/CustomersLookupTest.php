@@ -86,6 +86,74 @@ final class CustomersLookupTest extends TestCase
     }
 
     #[Test]
+    public function phone_fields_map_to_typed_properties(): void
+    {
+        $http = new ScriptedHttpClient()
+            ->on(
+                'https://restapi.e-conomic.com/customers/1',
+                '{"customerNumber":1,"telephoneAndFaxNumber":"+45 11111111","mobilePhone":"+45 22222222"}',
+            )
+        ;
+
+        $client = new Client('app', 'agreement', httpClient: $http);
+        $customer = $client->customers()->getByNumber(1);
+
+        self::assertNotNull($customer);
+        self::assertSame('+45 11111111', $customer->telephoneAndFaxNumber);
+        self::assertSame('+45 22222222', $customer->mobilePhone);
+    }
+
+    #[Test]
+    public function last_updated_maps_to_date_time_immutable_and_raw_keeps_the_wire_string(): void
+    {
+        $http = new ScriptedHttpClient()
+            ->on(
+                'https://restapi.e-conomic.com/customers/1',
+                '{"customerNumber":1,"lastUpdated":"2020-02-19T09:18:09Z"}',
+            )
+        ;
+
+        $client = new Client('app', 'agreement', httpClient: $http);
+        $customer = $client->customers()->getByNumber(1);
+
+        self::assertNotNull($customer);
+        self::assertNotNull($customer->lastUpdated);
+        self::assertSame('2020-02-19T09:18:09+00:00', $customer->lastUpdated->format(\DateTimeInterface::RFC3339));
+        self::assertSame('2020-02-19T09:18:09Z', $customer->raw['lastUpdated']);
+    }
+
+    #[Test]
+    public function absent_last_updated_maps_to_null(): void
+    {
+        $http = new ScriptedHttpClient()
+            ->on('https://restapi.e-conomic.com/customers/1', '{"customerNumber":1}')
+        ;
+
+        $client = new Client('app', 'agreement', httpClient: $http);
+        $customer = $client->customers()->getByNumber(1);
+
+        self::assertNotNull($customer);
+        self::assertNull($customer->lastUpdated);
+    }
+
+    #[Test]
+    public function garbage_last_updated_surfaces_as_mapping_exception(): void
+    {
+        $http = new ScriptedHttpClient()
+            ->on(
+                'https://restapi.e-conomic.com/customers/1',
+                '{"customerNumber":1,"lastUpdated":"not-a-date"}',
+            )
+        ;
+
+        $client = new Client('app', 'agreement', httpClient: $http);
+
+        $this->expectException(MappingException::class);
+
+        $client->customers()->getByNumber(1);
+    }
+
+    #[Test]
     public function valinor_mapping_failure_surfaces_as_mapping_exception_implementing_economic_exception(): void
     {
         // 2xx body that decodes as JSON but doesn't fit the Customer DTO shape — customerNumber

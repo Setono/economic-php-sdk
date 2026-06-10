@@ -15,7 +15,8 @@ use Psr\Http\Message\ResponseInterface;
 use Setono\Economic\Client\Client;
 
 #[CoversClass(Client::class)]
-#[CoversClass(EconomicException::class)]
+// EconomicException is deliberately NOT listed: it's an interface, and PHPUnit 11 rejects
+// interfaces as coverage targets (they contain no executable code).
 #[CoversClass(ResponseAwareException::class)]
 #[CoversClass(ClientErrorException::class)]
 #[CoversClass(ServerErrorException::class)]

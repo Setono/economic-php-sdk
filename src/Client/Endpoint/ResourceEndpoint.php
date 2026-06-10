@@ -14,15 +14,17 @@ use Setono\Economic\Response\Resource;
  * Abstract base for endpoints that represent a single REST resource at a path with a typed item DTO.
  *
  * Subclasses declare two protected hints: `getPath()` (the resource URL path) and `getItemClass()`
- * (the typed DTO class). Two shared helpers, symmetric in shape:
+ * (the typed DTO class). Three shared helpers, symmetric in shape:
  *  - {@see self::getOne()}    — GET + decode + map + `$raw` stamp.
  *  - {@see self::createOne()} — POST typed body + decode + map + `$raw` stamp.
+ *  - {@see self::updateOne()} — PUT typed body to `"{getPath()}/{$id}"` + decode + map + `$raw` stamp.
  *
  * Three known subclass shapes today:
  *  - {@see CollectionEndpoint} — adds pagination + `getItem(int|string $id)` for by-id lookups.
  *  - {@see SelfEndpoint}       — fetches the single resource at `/self` (no id), with memoization.
- *  - Leaf write-capable endpoints (e.g. `DraftOrdersEndpoint`, `CustomersEndpoint`) expose a typed
- *    public `create()` method that one-line-delegates to {@see self::createOne()}.
+ *  - Leaf write-capable endpoints (e.g. `DraftOrdersEndpoint`, `CustomersEndpoint`) expose typed
+ *    public `create()` / `update()` methods that one-line-delegate to {@see self::createOne()} /
+ *    {@see self::updateOne()}.
  *
  * @template T of Resource
  */
@@ -91,6 +93,27 @@ abstract class ResourceEndpoint extends Endpoint
     protected function createOne(Payload $request): Resource
     {
         $data = $this->client->post(static::getPath(), $request);
+
+        /** @var T $item */
+        $item = $this->mapResource(static::getItemClass(), $data);
+
+        return $item;
+    }
+
+    /**
+     * PUT a typed request DTO to `"{getPath()}/{$id}"` and map the response into the typed item.
+     * Same Valinor map pipeline and `$raw` stamping as {@see self::createOne()}. e-conomic PUT
+     * endpoints are full-replace — any field absent from the serialized body is cleared
+     * server-side. Any non-2xx response propagates as the appropriate typed exception.
+     *
+     * @internal Shared pipeline used by SDK-internal leaf write endpoints. Not part of the
+     *           package's BC promise.
+     *
+     * @return T
+     */
+    protected function updateOne(int|string $id, Payload $request): Resource
+    {
+        $data = $this->client->put(sprintf('%s/%s', static::getPath(), $id), $request);
 
         /** @var T $item */
         $item = $this->mapResource(static::getItemClass(), $data);

@@ -45,6 +45,71 @@ final class IdentifierTest extends TestCase
     }
 
     #[Test]
+    public function from_reference_infers_the_field_name_from_the_single_number_key(): void
+    {
+        $identifier = Identifier::fromReference([
+            'customerGroupNumber' => 7,
+            'name' => 'Wholesale',
+            'self' => 'https://restapi.e-conomic.com/customer-groups/7',
+        ]);
+
+        self::assertSame('customerGroupNumber', $identifier->fieldName);
+        self::assertSame(7, $identifier->value);
+    }
+
+    #[Test]
+    public function from_reference_accepts_string_valued_number_keys(): void
+    {
+        // products use a string productNumber — the value round-trips as the server sent it
+        $identifier = Identifier::fromReference(['productNumber' => 'SKU-001', 'self' => 'https://example/products/SKU-001']);
+
+        self::assertSame('productNumber', $identifier->fieldName);
+        self::assertSame('SKU-001', $identifier->value);
+    }
+
+    #[Test]
+    public function from_reference_ignores_nested_arrays_when_detecting_the_number_key(): void
+    {
+        // order references.customerContact carries a nested customer object whose
+        // customerNumber must not make the detection ambiguous
+        $identifier = Identifier::fromReference([
+            'customerContactNumber' => 9,
+            'customer' => ['customerNumber' => 42],
+        ]);
+
+        self::assertSame('customerContactNumber', $identifier->fieldName);
+        self::assertSame(9, $identifier->value);
+    }
+
+    #[Test]
+    public function from_reference_throws_when_no_number_key_is_present(): void
+    {
+        // e-conomic's priceGroup-style shape: a bare HATEOAS self link
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('found 0 (object keys: self)');
+
+        Identifier::fromReference(['self' => 'https://example/pg/1']);
+    }
+
+    #[Test]
+    public function from_reference_throws_when_multiple_number_keys_are_present(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('found 2');
+
+        Identifier::fromReference(['customerNumber' => 1, 'employeeNumber' => 2]);
+    }
+
+    #[Test]
+    public function from_reference_throws_when_the_number_value_is_not_a_scalar_identifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('found 0');
+
+        Identifier::fromReference(['customerGroupNumber' => true]);
+    }
+
+    #[Test]
     public function product_factory_takes_a_string(): void
     {
         $identifier = Identifier::product('SKU-001');

@@ -31,6 +31,23 @@ final class DraftOrdersEndpoint extends CollectionEndpoint
         return $this->createOne($request);
     }
 
+    /**
+     * PUT the given draft-order payload to `orders/drafts/{$number}` and return the updated
+     * {@see Order}. Delegates to
+     * {@see \Setono\Economic\Client\Endpoint\ResourceEndpoint::updateOne()} — same Valinor
+     * pipeline and `$raw` stamping as {@see self::create()}.
+     *
+     * WARNING: e-conomic PUT is full-replace. Any field absent from the serialized body —
+     * including `null` properties (stripped by the `Payload` transformer) and schema fields
+     * not modeled on {@see DraftOrderRequest} — is cleared server-side. Use
+     * {@see DraftOrderRequest::fromResponse()} to prefill a request from a fetched order,
+     * or hand-build the body and use `Client::request()` for unmodeled fields.
+     */
+    public function update(int $number, DraftOrderRequest $request): Order
+    {
+        return $this->updateOne($number, $request);
+    }
+
     protected static function getPath(): string
     {
         return 'orders/drafts';

@@ -76,6 +76,22 @@ interface ClientInterface
      */
     public function post(string $uri, Payload $body): array;
 
+    /**
+     * PUT the given typed request DTO to `$uri` and return the decoded JSON body.
+     *
+     * Serialization works exactly as in {@see self::post()}. Note that e-conomic PUT endpoints
+     * are full-replace: `null` properties are stripped from the JSON by the `Payload`
+     * null-skipping transformer, and any field absent from the body is cleared server-side.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws \Setono\Economic\Exception\InvalidUrlException if `$uri` is absolute and points to a different host than the base URI
+     * @throws ClientExceptionInterface if an error happens while processing the request
+     * @throws EconomicException if the response is non-2xx (concrete subtype depends on the status code)
+     * @throws \Setono\Economic\Exception\MalformedResponseException if the response body is not valid JSON or does not decode to an object
+     */
+    public function put(string $uri, Payload $body): array;
+
     public function customers(): CustomersEndpoint;
 
     public function invoices(): InvoicesEndpoint;

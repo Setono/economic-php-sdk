@@ -11,7 +11,7 @@
     ],
     "require": {
         "php": ">=8.4",
-        "cuyz/valinor": "^2.0",
+        "cuyz/valinor": "^2.2.2",
         "php-http/discovery": "^1.19",
         "psr/http-client": "^1.0",
         "psr/http-client-implementation": "^1",
