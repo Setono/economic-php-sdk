@@ -223,10 +223,15 @@ $request = new DraftOrderRequest(
 
 ### Updating a draft order
 
-`update(int $number, DraftOrderRequest $request): Order` PUTs to `orders/drafts/:number`. **e-conomic PUT is full-replace**: any field absent from the body — including every `null` property, which the SDK omits from the JSON — is cleared server-side. Build the request with every field you want to keep:
+`update(int $number, DraftOrderRequest $request): Order` PUTs to `orders/drafts/:number`. **e-conomic PUT is full-replace**: any field absent from the body — including every `null` property, which the SDK omits from the JSON — is cleared server-side. Use the same read-modify-write flow as for customers (see below): fetch the order, prefill with `DraftOrderRequest::fromResponse()`, change what you need, PUT the whole thing back:
 
 ```php
-$order = $client->orders()->drafts()->update(42, $request);
+$order = $client->orders()->drafts()->getByNumber(42);
+
+$request = DraftOrderRequest::fromResponse($order);
+$request->notes = new Notes(heading: 'Updated');
+
+$updated = $client->orders()->drafts()->update(42, $request);
 ```
 
 ### Creating a customer
@@ -292,7 +297,7 @@ $request->mobilePhone = null;              // null = omitted from the JSON = cle
 $updated = $client->customers()->update(42, $request);
 ```
 
-`fromResponse()` copies every field `CustomerRequest` models: typed response fields directly, and reference objects (`customerGroup`, `vatZone`, `paymentTerms`, `layout`, `salesPerson`) plus untyped scalars (`pNumber`, `ean`, `publicEntryNumber`, `website`, `eInvoicingDisabledByDefault`) out of `$raw`. It therefore requires a `Customer` fetched through the SDK — on a hand-constructed instance (empty `$raw`) it throws. Raw data that is present but malformed also throws instead of being silently dropped, because a dropped field would be wiped by the subsequent PUT.
+`fromResponse()` is available on every request DTO (it lives on the `Payload` base class): it maps the response's full decoded body (`$raw`) into the request DTO via Valinor. Every field the DTO models is carried over — reference objects like `customerGroup` or `salesPerson` become `Identifier` instances automatically, with the JSON field name inferred from the reference's `<x>Number` key — and everything else (server-computed fields, HATEOAS links, unmodeled schema fields) is dropped. It therefore requires a response fetched through the SDK — on a hand-constructed instance (empty `$raw`) it throws. Raw data that is present but malformed also throws instead of being silently dropped, because a dropped field would be wiped by the subsequent PUT.
 
 **Caveat:** schema fields the SDK doesn't model (`priceGroup`, `customerContact`, `attention`, `defaultDeliveryLocation`, …) cannot be carried over and **will be cleared** by an update built this way. If you use those fields, hand-build the body and dispatch via `Client::request()`.
 

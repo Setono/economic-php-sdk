@@ -16,7 +16,7 @@ use Setono\Economic\Request\Payload;
  * `Identifier::employee()`, `Identifier::customerContact()`, and
  * `Identifier::vendor()` respectively.
  */
-final class References implements Payload
+final class References extends Payload
 {
     public function __construct(
         public ?Identifier $salesPerson = null,

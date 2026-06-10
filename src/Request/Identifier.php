@@ -103,6 +103,42 @@ final readonly class Identifier
     }
 
     /**
+     * Build an `Identifier` from an e-conomic reference object as returned by the REST API —
+     * e.g. `['customerGroupNumber' => 1, 'self' => 'https://...']`. The JSON field name is
+     * inferred from the object's single scalar `<x>Number` key, so one factory covers every
+     * reference type the API returns (including the string-valued `productNumber`) and the
+     * identifier round-trips back to the exact shape the server itself produced.
+     *
+     * Registered as a Valinor constructor on the request mapper behind
+     * {@see Payload::fromResponse()}. Prefer the named factories above in hand-written code.
+     *
+     * @param array<mixed> $reference
+     *
+     * @throws \InvalidArgumentException if the reference object does not contain exactly one scalar `<x>Number` key
+     */
+    public static function fromReference(array $reference): self
+    {
+        $candidates = [];
+        foreach ($reference as $field => $value) {
+            if (is_string($field) && str_ends_with($field, 'Number') && (is_int($value) || is_string($value))) {
+                $candidates[$field] = $value;
+            }
+        }
+
+        if (1 !== \count($candidates)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Expected the reference object to contain exactly one scalar `<x>Number` key, found %d (object keys: %s)',
+                \count($candidates),
+                implode(', ', array_map(strval(...), array_keys($reference))),
+            ));
+        }
+
+        $field = array_key_first($candidates);
+
+        return new self($field, $candidates[$field]);
+    }
+
+    /**
      * Append the SDK's `Identifier` transformer to a consumer-supplied {@see NormalizerBuilder}.
      *
      * For consumers wiring a custom `NormalizerBuilder`, prefer the higher-level

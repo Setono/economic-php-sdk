@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Request\Customer;
 
+use CuyZ\Valinor\Mapper\MappingError;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Setono\Economic\Request\Identifier;
+use Setono\Economic\Request\Payload;
 use Setono\Economic\Response\Customer\Customer;
 
+#[CoversClass(Payload::class)]
+#[CoversClass(Identifier::class)]
 #[CoversClass(CustomerRequest::class)]
 final class CustomerRequestFromResponseTest extends TestCase
 {
@@ -60,10 +65,7 @@ final class CustomerRequestFromResponseTest extends TestCase
     #[Test]
     public function absent_optional_raw_keys_default_to_null(): void
     {
-        $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
-        $customer->raw = self::minimalRaw();
-
-        $request = CustomerRequest::fromResponse($customer);
+        $request = CustomerRequest::fromResponse(self::customerWithRaw(self::minimalRaw()));
 
         self::assertNull($request->pNumber);
         self::assertNull($request->ean);
@@ -79,10 +81,7 @@ final class CustomerRequestFromResponseTest extends TestCase
     #[Test]
     public function explicit_null_reference_object_in_raw_maps_to_null(): void
     {
-        $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
-        $customer->raw = self::minimalRaw() + ['layout' => null];
-
-        $request = CustomerRequest::fromResponse($customer);
+        $request = CustomerRequest::fromResponse(self::customerWithRaw(self::minimalRaw() + ['layout' => null]));
 
         self::assertNull($request->layout);
     }
@@ -90,50 +89,41 @@ final class CustomerRequestFromResponseTest extends TestCase
     #[Test]
     public function it_throws_when_a_required_reference_object_is_missing_from_raw(): void
     {
-        $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
         $raw = self::minimalRaw();
         unset($raw['customerGroup']);
-        $customer->raw = $raw;
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('customerGroup');
 
-        CustomerRequest::fromResponse($customer);
+        CustomerRequest::fromResponse(self::customerWithRaw($raw));
     }
 
     #[Test]
     public function it_throws_on_a_hand_constructed_customer_with_empty_raw(): void
     {
+        // Typed properties are ignored on purpose — fromResponse() maps from $raw alone,
+        // and $raw is only populated on SDK-fetched resources.
         $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
 
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('fetched through the SDK');
-
-        CustomerRequest::fromResponse($customer);
+        try {
+            CustomerRequest::fromResponse($customer);
+            self::fail('expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringContainsString('fetched through the SDK', $e->getMessage());
+            self::assertInstanceOf(MappingError::class, $e->getPrevious(), 'the Valinor error must be preserved as $previous');
+        }
     }
 
     #[Test]
-    public function it_throws_when_name_is_null(): void
+    public function it_throws_when_a_required_scalar_is_missing_from_raw(): void
     {
-        $customer = new Customer(customerNumber: 1, currency: 'DKK');
-        $customer->raw = self::minimalRaw();
+        $raw = self::minimalRaw();
+        unset($raw['currency']);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Customer::$name');
+        $this->expectExceptionMessage('currency');
 
-        CustomerRequest::fromResponse($customer);
-    }
-
-    #[Test]
-    public function it_throws_when_currency_is_null(): void
-    {
-        $customer = new Customer(customerNumber: 1, name: 'Acme');
-        $customer->raw = self::minimalRaw();
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Customer::$currency');
-
-        CustomerRequest::fromResponse($customer);
+        CustomerRequest::fromResponse(self::customerWithRaw($raw));
     }
 
     #[Test]
@@ -141,105 +131,100 @@ final class CustomerRequestFromResponseTest extends TestCase
     {
         // e-conomic's priceGroup-style shape: a bare HATEOAS self link with no number. Dropping
         // it silently would clear the field server-side on the subsequent full-replace PUT.
-        $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
-        $customer->raw = self::minimalRaw() + ['layout' => ['self' => 'https://example/layouts/17']];
+        $raw = self::minimalRaw() + ['layout' => ['self' => 'https://example/layouts/17']];
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('layoutNumber');
+        $this->expectExceptionMessage('layout');
 
-        CustomerRequest::fromResponse($customer);
+        CustomerRequest::fromResponse(self::customerWithRaw($raw));
     }
 
     #[Test]
     public function it_throws_when_a_reference_object_is_not_an_array(): void
     {
-        $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
         $raw = self::minimalRaw();
         $raw['vatZone'] = 'not-an-object';
-        $customer->raw = $raw;
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('vatZone');
 
-        CustomerRequest::fromResponse($customer);
-    }
-
-    #[Test]
-    public function it_throws_when_an_identifier_number_is_not_an_integer(): void
-    {
-        $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
-        $raw = self::minimalRaw();
-        $raw['customerGroup'] = ['customerGroupNumber' => '1'];
-        $customer->raw = $raw;
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('customerGroup');
-
-        CustomerRequest::fromResponse($customer);
+        CustomerRequest::fromResponse(self::customerWithRaw($raw));
     }
 
     #[Test]
     public function it_throws_when_an_untyped_raw_scalar_has_the_wrong_type(): void
     {
-        $customer = new Customer(customerNumber: 1, name: 'Acme', currency: 'DKK');
-        $customer->raw = self::minimalRaw() + ['website' => 123];
+        // The request mapper is strict — no scalar casting. A wrong-typed value must throw,
+        // never be coerced or dropped.
+        $raw = self::minimalRaw() + ['website' => 123];
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('website');
 
-        CustomerRequest::fromResponse($customer);
+        CustomerRequest::fromResponse(self::customerWithRaw($raw));
     }
 
     /**
-     * The three required reference objects only — the minimum `$raw` for fromResponse()
-     * to succeed on a Customer whose typed `name`/`currency` are set.
+     * The minimum `$raw` for fromResponse() to succeed: the request DTO's five required
+     * constructor fields.
      *
      * @return array<string, mixed>
      */
     private static function minimalRaw(): array
     {
         return [
+            'name' => 'Acme',
+            'currency' => 'DKK',
             'customerGroup' => ['customerGroupNumber' => 1],
             'vatZone' => ['vatZoneNumber' => 2],
             'paymentTerms' => ['paymentTermsNumber' => 3],
         ];
     }
 
+    /**
+     * @param array<string, mixed> $raw
+     */
+    private static function customerWithRaw(array $raw): Customer
+    {
+        $customer = new Customer();
+        $customer->raw = $raw;
+
+        return $customer;
+    }
+
     private static function richCustomer(): Customer
     {
-        $customer = new Customer(
-            customerNumber: 1,
-            name: 'Acme',
-            currency: 'DKK',
-            barred: false,
-            lastUpdated: new \DateTimeImmutable('2020-02-19T09:18:09Z'),
-            email: 'foo@example.com',
-            address: 'Main 1',
-            zip: '9000',
-            city: 'Aalborg',
-            country: 'Denmark',
-            corporateIdentificationNumber: '12345678',
-            vatNumber: 'DK12345678',
-            telephoneAndFaxNumber: '+45 11111111',
-            mobilePhone: '+45 22222222',
-            balance: 100.5,
-            dueAmount: 50.25,
-            creditLimit: 1000.5,
-        );
-
-        $customer->raw = [
-            'customerGroup' => ['customerGroupNumber' => 1, 'self' => 'https://example/cg/1'],
-            'vatZone' => ['vatZoneNumber' => 2, 'self' => 'https://example/vz/2'],
-            'paymentTerms' => ['paymentTermsNumber' => 3, 'self' => 'https://example/pt/3'],
-            'layout' => ['layoutNumber' => 17, 'self' => 'https://example/layouts/17'],
-            'salesPerson' => ['employeeNumber' => 5, 'self' => 'https://example/employees/5'],
+        return self::customerWithRaw([
+            'customerNumber' => 1,
+            'name' => 'Acme',
+            'currency' => 'DKK',
+            'barred' => false,
+            'lastUpdated' => '2020-02-19T09:18:09Z', // server-computed — dropped as superfluous
+            'email' => 'foo@example.com',
+            'address' => 'Main 1',
+            'zip' => '9000',
+            'city' => 'Aalborg',
+            'country' => 'Denmark',
+            'corporateIdentificationNumber' => '12345678',
+            'vatNumber' => 'DK12345678',
+            'telephoneAndFaxNumber' => '+45 11111111',
+            'mobilePhone' => '+45 22222222',
+            'balance' => 100.5,
+            'dueAmount' => 50.25,
+            'creditLimit' => 1000.5,
             'pNumber' => '1007331700',
             'ean' => '5790000123456',
             'publicEntryNumber' => 'PEN-1',
             'website' => 'https://acme.example.com',
             'eInvoicingDisabledByDefault' => true,
-        ];
-
-        return $customer;
+            'customerGroup' => ['customerGroupNumber' => 1, 'self' => 'https://example/cg/1'],
+            'vatZone' => ['vatZoneNumber' => 2, 'self' => 'https://example/vz/2'],
+            'paymentTerms' => ['paymentTermsNumber' => 3, 'self' => 'https://example/pt/3'],
+            'layout' => ['layoutNumber' => 17, 'self' => 'https://example/layouts/17'],
+            'salesPerson' => ['employeeNumber' => 5, 'self' => 'https://example/employees/5'],
+            'priceGroup' => ['self' => 'https://example/pg/1'], // unmodeled — dropped
+            'invoices' => ['drafts' => 'https://example/inv/drafts'], // HATEOAS — dropped
+            'self' => 'https://example/customers/1',
+        ]);
     }
 }
