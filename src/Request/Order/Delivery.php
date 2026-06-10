@@ -10,7 +10,7 @@ use Setono\Economic\Request\Payload;
  * Delivery details for the order. All fields are optional per the e-conomic schema.
  * `deliveryDate` is ISO-8601 (YYYY-MM-DD).
  */
-final readonly class Delivery implements Payload
+final class Delivery implements Payload
 {
     public function __construct(
         public ?string $address = null,

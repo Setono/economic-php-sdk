@@ -16,6 +16,8 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Setono\Economic\Exception\InvalidUrlException;
 use Setono\Economic\Exception\MalformedResponseException;
+use Setono\Economic\Request\Customer\CustomerRequest;
+use Setono\Economic\Request\Identifier;
 
 #[CoversClass(Client::class)]
 final class ClientTest extends TestCase
@@ -199,6 +201,63 @@ final class ClientTest extends TestCase
             'https://restapi.e-conomic.com/products?embed=lines',
             (string) $httpClient->lastRequest->getUri(),
         );
+    }
+
+    #[Test]
+    public function put_dispatches_a_put_with_the_serialized_payload(): void
+    {
+        $httpClient = new MockHttpClient();
+        $client = self::createClient($httpClient);
+
+        $client->put('customers/1', self::somePayload());
+
+        self::assertNotNull($httpClient->lastRequest);
+        self::assertSame('PUT', $httpClient->lastRequest->getMethod());
+        self::assertSame(
+            'https://restapi.e-conomic.com/customers/1',
+            (string) $httpClient->lastRequest->getUri(),
+        );
+
+        /** @var array<string, mixed> $decoded */
+        $decoded = json_decode((string) $httpClient->lastRequest->getBody(), true, flags: \JSON_THROW_ON_ERROR);
+        self::assertSame([
+            'name' => 'Acme',
+            'currency' => 'DKK',
+            'customerGroup' => ['customerGroupNumber' => 1],
+            'vatZone' => ['vatZoneNumber' => 1],
+            'paymentTerms' => ['paymentTermsNumber' => 1],
+        ], $decoded, 'the PUT body must run through the Identifier + Payload null-skipping transformers');
+    }
+
+    #[Test]
+    public function put_refuses_absolute_url_with_foreign_host(): void
+    {
+        $httpClient = new MockHttpClient();
+        $client = self::createClient($httpClient);
+
+        try {
+            $client->put('https://attacker.example.com/customers/1', self::somePayload());
+            self::fail('expected InvalidUrlException');
+        } catch (InvalidUrlException) {
+            // expected
+        }
+
+        self::assertNull($httpClient->lastRequest, 'no request must be dispatched to the foreign host');
+    }
+
+    #[Test]
+    public function put_throws_malformed_response_exception_when_body_is_not_json(): void
+    {
+        $http = new class() implements HttpClientInterface {
+            public function sendRequest(RequestInterface $request): ResponseInterface
+            {
+                return new Response(200, ['Content-Type' => 'application/json'], 'this is not json');
+            }
+        };
+        $client = self::createClient($http);
+
+        $this->expectException(MalformedResponseException::class);
+        $client->put('customers/1', self::somePayload());
     }
 
     #[Test]
@@ -464,6 +523,17 @@ final class ClientTest extends TestCase
     private static function createClient(?HttpClientInterface $httpClient = null): Client
     {
         return new Client('app-secret-token', 'agreement-grant-token', httpClient: $httpClient);
+    }
+
+    private static function somePayload(): CustomerRequest
+    {
+        return new CustomerRequest(
+            name: 'Acme',
+            currency: 'DKK',
+            customerGroup: Identifier::customerGroup(1),
+            vatZone: Identifier::vatZone(1),
+            paymentTerms: Identifier::paymentTerms(1),
+        );
     }
 }
 

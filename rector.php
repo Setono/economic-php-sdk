@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
-use Rector\Php83\Rector\ClassMethod\AddOverrideAttributeToOverriddenMethodsRector;
+use Rector\Php81\Rector\Property\ReadOnlyPropertyRector;
 use Rector\Php82\Rector\Class_\ReadOnlyClassRector;
+use Rector\Php83\Rector\ClassMethod\AddOverrideAttributeToOverriddenMethodsRector;
 use Rector\Set\ValueObject\LevelSetList;
 
 return static function (RectorConfig $rectorConfig): void {
@@ -28,6 +29,15 @@ return static function (RectorConfig $rectorConfig): void {
             __DIR__ . '/src/Response/Collection/Collection.php',
             __DIR__ . '/src/Response/Self_/Self_.php',
             __DIR__ . '/src/Response/Customer/Customer.php',
+            // Request `Payload` DTOs are deliberately mutable: the read-modify-write flow for
+            // full-replace PUT updates is "prefill via fromResponse() → assign fields → update()".
+            __DIR__ . '/src/Request/Customer',
+            __DIR__ . '/src/Request/Order',
+        ],
+        ReadOnlyPropertyRector::class => [
+            // Same rationale — promoted properties on request DTOs must stay writable.
+            __DIR__ . '/src/Request/Customer',
+            __DIR__ . '/src/Request/Order',
         ],
     ]);
 };

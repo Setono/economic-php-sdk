@@ -16,7 +16,7 @@ use Webmozart\Assert\Assert;
  * `Identifier::customerContact(int)`. `vatZone` is constructed via
  * `Identifier::vatZone(int)`.
  */
-final readonly class Recipient implements Payload
+final class Recipient implements Payload
 {
     public function __construct(
         public string $name,

@@ -17,7 +17,7 @@ use Setono\Economic\Request\Payload;
  * `product` uses a string `productNumber`; `unit` and `departmentalDistribution`
  * use integers. All three are constructed via {@see Identifier} factories.
  */
-final readonly class Line implements Payload
+final class Line implements Payload
 {
     public function __construct(
         public ?int $lineNumber = null,

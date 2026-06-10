@@ -221,6 +221,14 @@ $request = new DraftOrderRequest(
 
 `Identifier` is the single foreign-key wrapper for every `{<x>Number: int}` (or `productNumber: string`) reference the schema accepts. Named factories cover every reference type: `Identifier::layout()`, `Identifier::customer()`, `Identifier::customerGroup()`, `Identifier::vatZone()`, `Identifier::project()`, `Identifier::product()`, `Identifier::unit()`, `Identifier::employee()`, `Identifier::customerContact()`, `Identifier::vendor()`, `Identifier::deliveryLocation()`, `Identifier::paymentTerms()`, `Identifier::departmentalDistribution()`.
 
+### Updating a draft order
+
+`update(int $number, DraftOrderRequest $request): Order` PUTs to `orders/drafts/:number`. **e-conomic PUT is full-replace**: any field absent from the body — including every `null` property, which the SDK omits from the JSON — is cleared server-side. Build the request with every field you want to keep:
+
+```php
+$order = $client->orders()->drafts()->update(42, $request);
+```
+
 ### Creating a customer
 
 Schema: [`customers.post.schema.json`](https://restapi.e-conomic.com/schema/customers.post.schema.json).
@@ -270,6 +278,24 @@ $request = new CustomerRequest(
 
 **Note on `priceGroup`:** the e-conomic schema describes `priceGroup` as a `{ self: uri }` reference with no `priceGroupNumber` field, breaking the universal `<x>Number` convention. `CustomerRequest` therefore omits it. Consumers needing to set the price group can drop down to the low-level helper: `$client->post('customers', $hand_built_payload)`.
 
+### Updating a customer (read–modify–write)
+
+**e-conomic PUT is full-replace**: any field absent from the body is cleared server-side. Never build an update request with only the fields you want to change — fetch the customer first, prefill a request from it with `CustomerRequest::fromResponse()`, mutate what you need, and PUT the whole thing back:
+
+```php
+$customer = $client->customers()->getByNumber(42);
+
+$request = CustomerRequest::fromResponse($customer);
+$request->email = 'billing@acme.example';  // change what you need
+$request->mobilePhone = null;              // null = omitted from the JSON = cleared server-side
+
+$updated = $client->customers()->update(42, $request);
+```
+
+`fromResponse()` copies every field `CustomerRequest` models: typed response fields directly, and reference objects (`customerGroup`, `vatZone`, `paymentTerms`, `layout`, `salesPerson`) plus untyped scalars (`pNumber`, `ean`, `publicEntryNumber`, `website`, `eInvoicingDisabledByDefault`) out of `$raw`. It therefore requires a `Customer` fetched through the SDK — on a hand-constructed instance (empty `$raw`) it throws. Raw data that is present but malformed also throws instead of being silently dropped, because a dropped field would be wiped by the subsequent PUT.
+
+**Caveat:** schema fields the SDK doesn't model (`priceGroup`, `customerContact`, `attention`, `defaultDeliveryLocation`, …) cannot be carried over and **will be cleared** by an update built this way. If you use those fields, hand-build the body and dispatch via `Client::request()`.
+
 ## Error handling
 
 The SDK uses two distinct error patterns for reads and writes:
@@ -283,7 +309,7 @@ if ($product === null) {
 }
 ```
 
-**Writes (`create`), custom `request()` calls, and `get()` always throw on any non-2xx.** Catch by type:
+**Writes (`create`, `update`), custom `request()` calls, and `get()` always throw on any non-2xx.** Catch by type:
 
 ```php
 use Setono\Economic\Exception\EconomicException;
@@ -586,15 +612,17 @@ if ($_ENV['APP_ENV'] === 'dev') {
 
 See [Valinor: Performance and caching](https://valinor.cuyz.io/latest/other/performance-and-cache/) for full details.
 
+**Caveat on `supportDateFormats()`:** the SDK maps timestamp fields (e.g. `Customer::$lastUpdated`) to `\DateTimeImmutable` via Valinor's default date handling, which accepts e-conomic's `2020-02-19T09:18:09Z` format out of the box. Calling `supportDateFormats()` on a custom `MapperBuilder` *replaces* those defaults — if you do, include a format covering e-conomic's timestamps (e.g. `Y-m-d\TH:i:sp`), or mapping will throw `MappingException`.
+
 ## Supported endpoints
 
 The SDK currently types the following endpoints. Anything not listed is reachable via the low-level helpers (see [Other requests](#other-requests)) — pull requests adding more endpoints are welcome.
 
 | Resource | Read (typed DTO returned) | Write |
 |---|---|---|
-| Customers | `$client->customers()->getByNumber(int)`, `->getPage()`, `->paginate()` | `$client->customers()->create(CustomerRequest)` |
+| Customers | `$client->customers()->getByNumber(int)`, `->getPage()`, `->paginate()` | `$client->customers()->create(CustomerRequest)`, `->update(int, CustomerRequest)` |
 | Products | `$client->products()->getByNumber(string)`, `->getPage()`, `->paginate()` | — |
-| Draft orders | `$client->orders()->drafts()->getByNumber(int)`, `->getPage()`, `->paginate()` | `$client->orders()->drafts()->create(DraftOrderRequest)` |
+| Draft orders | `$client->orders()->drafts()->getByNumber(int)`, `->getPage()`, `->paginate()` | `$client->orders()->drafts()->create(DraftOrderRequest)`, `->update(int, DraftOrderRequest)` |
 | Sent orders | `$client->orders()->sent()->getByNumber(int)`, `->getPage()`, `->paginate()` | — |
 | Booked invoices | `$client->invoices()->booked()->getByNumber(int)`, `->getPage()`, `->paginate()` | — |
 | Self / current agreement | `$client->self()->get()` | — |

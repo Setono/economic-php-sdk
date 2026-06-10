@@ -145,8 +145,32 @@ final class Client implements ClientInterface
      */
     public function post(string $uri, Payload $body): array
     {
+        return $this->send('POST', $uri, $body);
+    }
+
+    /**
+     * PUT a typed request DTO to `$uri` and return the decoded JSON body. Same serialization
+     * pipeline as {@see self::post()}. Note that e-conomic PUT endpoints are full-replace:
+     * `null` properties are stripped from the JSON by the `Payload` transformer, and any field
+     * absent from the body is cleared server-side.
+     *
+     * @return array<string, mixed>
+     */
+    public function put(string $uri, Payload $body): array
+    {
+        return $this->send('PUT', $uri, $body);
+    }
+
+    /**
+     * Shared POST/PUT pipeline: normalize the typed DTO to JSON via the constructor-injected
+     * (or default) {@see NormalizerBuilder}, build the PSR-7 request, dispatch, decode.
+     *
+     * @return array<string, mixed>
+     */
+    private function send(string $method, string $uri, Payload $body): array
+    {
         $request = $this->requestFactory
-            ->createRequest('POST', $this->resolveUrl($uri))
+            ->createRequest($method, $this->resolveUrl($uri))
             ->withBody(
                 $this->streamFactory->createStream(
                     $this->normalizerBuilder->normalizer(Format::json())->normalize($body),
