@@ -18,7 +18,7 @@ use Setono\Economic\TestDouble\ScriptedHttpClient;
 final class ResourceRawTest extends TestCase
 {
     #[Test]
-    public function product_carries_raw_with_untyped_fields(): void
+    public function product_carries_raw_with_the_full_response_body(): void
     {
         $http = new ScriptedHttpClient()
             ->on(
@@ -34,7 +34,7 @@ final class ResourceRawTest extends TestCase
         // typed fields are populated
         self::assertSame('5', $product->productNumber);
         self::assertSame('Foo', $product->name);
-        // and $raw carries the full decoded response — including fields we never typed
+        // and $raw carries the full decoded response — typed fields included
         self::assertSame('5', $product->raw['productNumber']);
         self::assertSame(12.34, $product->raw['costPrice']);
         self::assertSame(['name' => 'kg'], $product->raw['unit']);

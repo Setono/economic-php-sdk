@@ -77,17 +77,21 @@ $order    = $client->orders()->drafts()->getByNumber(42); // ?Order
 $invoice  = $client->invoices()->booked()->getByNumber(9001); // ?BookedInvoice
 ```
 
-The returned DTO has typed properties for the most-accessed scalars, plus `$raw` for everything else:
+The returned DTO types every first-level field of the schema — scalars, dates and reference objects alike — plus `$raw` as the escape hatch:
 
 ```php
-$customer->customerNumber;            // ?int
-$customer->name;                      // ?string
-$customer->email;                     // ?string
-$customer->balance;                   // ?float (server-computed)
+$customer->customerNumber;                       // ?int
+$customer->name;                                 // ?string
+$customer->email;                                // ?string
+$customer->balance;                              // ?float (server-computed)
+$customer->lastUpdated;                          // ?\DateTimeImmutable
+$customer->customerGroup?->customerGroupNumber;  // ?int — typed reference DTO
+$customer->salesPerson?->employeeNumber;         // ?int
+$customer->paymentTerms?->self;                  // ?string — the reference's HATEOAS URL
 
-// Anything not typed lives in $raw:
-$customer->raw['customerGroup']['customerGroupNumber'] ?? null;
-$customer->raw['salesPerson']['employeeNumber']        ?? null;
+// Link/meta fields (self, contacts, templates, totals, …) and future schema additions
+// stay reachable via $raw:
+$customer->raw['contacts'] ?? null;
 ```
 
 ### Get a single page
@@ -193,8 +197,8 @@ $request = new DraftOrderRequest(
 );
 
 $order = $client->orders()->drafts()->create($request);
-$order->orderNumber;             // typed (int)
-$order->raw['grossAmount'] ?? 0; // server-computed fields land in $raw
+$order->orderNumber;       // typed (int)
+$order->grossAmount ?? 0;  // server-computed fields are typed too (?float)
 ```
 
 Optional fields default to `null` and are omitted from the JSON sent to e-conomic — there is no risk of accidentally sending an empty `notes` block:
@@ -254,9 +258,9 @@ $request = new CustomerRequest(
 );
 
 $customer = $client->customers()->create($request);
-$customer->customerNumber;                                       // typed (int) — server-assigned
-$customer->name;                                                 // typed (string)
-$customer->raw['customerGroup']['customerGroupNumber'] ?? null;  // references live in $raw
+$customer->customerNumber;                       // typed (int) — server-assigned
+$customer->name;                                 // typed (string)
+$customer->customerGroup?->customerGroupNumber;  // typed reference DTO
 ```
 
 A fuller example with optional fields:
@@ -414,14 +418,15 @@ $customer = new \Setono\Economic\Response\Customer\Customer(
 $customer->raw = ['extraField' => 'value']; // $raw is intentionally not readonly
 ```
 
-## Raw access (when a field isn't typed yet)
+## Raw access (when a field isn't typed)
 
-Every entry-point DTO (`Product`, `Order`, `BookedInvoice`, `Self_`, `Collection<T>`) carries a `public array $raw` with the full decoded JSON for that response. Nested DTOs don't carry `$raw` — reach them via the parent's `$raw['nested-key']`.
+Every entry-point DTO (`Product`, `Order`, `BookedInvoice`, `Self_`, `Collection<T>`) carries a `public array $raw` with the full decoded JSON for that response. All first-level schema fields are typed, so `$raw` is the escape hatch for the rest: HATEOAS link/meta fields (`self`, `contacts`, `templates`, `totals`, `soap`, …), second-level blobs the SDK deliberately skips (`productGroup.accrual`, `application.requiredRoles`), and anything e-conomic adds to the schema before the SDK does. Nested DTOs don't carry `$raw` — reach their slice via the parent's `$raw['nested-key']`.
 
 ```php
 $product = $client->products()->getByNumber('5');
-$product->name;                    // typed
-$product->raw['costPrice'] ?? null; // any field e-conomic returns
+$product->name;                  // typed
+$product->costPrice;             // typed (?float)
+$product->raw['self'] ?? null;   // link fields stay in $raw
 ```
 
 When re-serializing a DTO (caching, logging, audit trail), use `$dto->raw` directly — that's the full API response. `json_encode($product)` would produce a hybrid of the typed-readonly fields plus an embedded `raw` key, which is rarely what you want.
@@ -445,7 +450,9 @@ foreach ($customerImports as $row) {
 $cache  = new \CuyZ\Valinor\Cache\FileSystemCache('/var/cache/economic');
 $client = new Client(
     $token, $agreement,
-    mapperBuilder:     (new \CuyZ\Valinor\MapperBuilder())->withCache($cache),
+    mapperBuilder:     Client::configureMapperBuilder(
+        (new \CuyZ\Valinor\MapperBuilder())->withCache($cache),
+    ),
     normalizerBuilder: Client::registerNormalizerTransformers(
         (new \CuyZ\Valinor\NormalizerBuilder())->withCache($cache),
     ),
@@ -581,7 +588,7 @@ Strip the query and fragment from the logged URL (as above) so any consumer-supp
 
 The SDK uses [CuyZ/Valinor](https://github.com/CuyZ/Valinor) to map JSON ↔ DTOs. The mapping is expensive *without a cache*: Valinor introspects every target class on first use, then compiles the mapping. For production, share a single `Client` across the request lifecycle and supply cached Valinor builders.
 
-`Client::registerNormalizerTransformers()` is a single-call helper that wires the SDK's `Identifier` serializer **and** the `Payload` null-skipping transformer onto a consumer-supplied `NormalizerBuilder`. Forget either and the SDK will throw at `Client::__construct` with a remediation hint, so misconfiguration is caught at deploy time, not at runtime.
+Two single-call helpers apply the SDK's required configuration to consumer-supplied builders. `Client::configureMapperBuilder()` wires the mapper side: superfluous-key tolerance (responses carry fields the DTOs don't model), the `$raw` stamping converter (without it `Payload::fromResponse()` breaks), and the date formats e-conomic emits. `Client::registerNormalizerTransformers()` wires the SDK's `Identifier` serializer **and** the `Payload` null-skipping transformer onto a `NormalizerBuilder` — forget it and the SDK will throw at `Client::__construct` with a remediation hint.
 
 ```php
 <?php
@@ -595,7 +602,9 @@ require_once 'vendor/autoload.php';
 
 $cache = new FileSystemCache('/var/cache/economic');
 
-$mapperBuilder = (new MapperBuilder())->withCache($cache);
+$mapperBuilder = Client::configureMapperBuilder(
+    (new MapperBuilder())->withCache($cache),
+);
 $normalizerBuilder = Client::registerNormalizerTransformers(
     (new NormalizerBuilder())->withCache($cache),
 );
@@ -619,7 +628,7 @@ if ($_ENV['APP_ENV'] === 'dev') {
 
 See [Valinor: Performance and caching](https://valinor.cuyz.io/latest/other/performance-and-cache/) for full details.
 
-**Caveat on `supportDateFormats()`:** the SDK maps timestamp fields (e.g. `Customer::$lastUpdated`) to `\DateTimeImmutable` via Valinor's default date handling, which accepts e-conomic's `2020-02-19T09:18:09Z` format out of the box. Calling `supportDateFormats()` on a custom `MapperBuilder` *replaces* those defaults — if you do, include a format covering e-conomic's timestamps (e.g. `Y-m-d\TH:i:sp`), or mapping will throw `MappingException`.
+**Caveat on `supportDateFormats()`:** the SDK maps both timestamp fields (e.g. `Customer::$lastUpdated`, `2020-02-19T09:18:09Z`) and date-only fields (e.g. `Order::$date`, `2026-05-01`) to `\DateTimeImmutable`. Valinor's *default* date handling only accepts the timestamp shape — `Client::configureMapperBuilder()` therefore calls `supportDateFormats()` with both (the date-only format is `!Y-m-d`; the `!` pins the time to midnight UTC). Because `supportDateFormats()` *replaces* whatever was configured before, call your own `supportDateFormats()` either before `configureMapperBuilder()` (the SDK's formats win) or not at all — re-declaring formats afterwards without the SDK's full list will make mapping throw `MappingException`.
 
 ## Supported endpoints
 

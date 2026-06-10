@@ -291,18 +291,51 @@ final class Client implements ClientInterface
     }
 
     /**
-     * The default Valinor {@see MapperBuilder} the SDK uses when no consumer-supplied builder
-     * is injected. See {@see RawStamper} for the rationale on the registered converter.
+     * Apply the SDK's full mapper configuration to a consumer-supplied {@see MapperBuilder}.
+     * This is the single entry point consumers SHOULD use when wiring a custom builder
+     * (e.g. with a `FileSystemCache` for production):
+     *
+     * ```
+     * $custom = (new MapperBuilder())->withCache($cache);
+     * $custom = Client::configureMapperBuilder($custom);
+     * $client = new Client('TOKEN', 'AGREEMENT', mapperBuilder: $custom);
+     * ```
+     *
+     * Without this helper, a bare builder rejects e-conomic's responses outright: unmodeled
+     * schema fields fail without `allowSuperfluousKeys()`, `Resource::$raw` is never stamped
+     * (breaking `Payload::fromResponse()`), and date fields fail to map — `supportDateFormats()`
+     * below REPLACES Valinor's defaults with the two shapes e-conomic emits (`2020-02-19T09:18:09Z`
+     * timestamps and `2020-02-19` date-only fields) plus Valinor's stock timestamp formats.
+     * The date-only format is `!Y-m-d`, not `Y-m-d`: without `!`, PHP fills the time-of-day
+     * from the current wall clock, making mapped values nondeterministic.
+     *
+     * See {@see RawStamper} for the rationale on the registered converter.
      */
-    private static function defaultMapperBuilder(): MapperBuilder
+    public static function configureMapperBuilder(MapperBuilder $builder): MapperBuilder
     {
-        return new MapperBuilder()
+        return $builder
             ->allowScalarValueCasting()
             ->allowNonSequentialList()
             ->allowUndefinedValues()
             ->allowSuperfluousKeys()
+            ->supportDateFormats(
+                'Y-m-d\TH:i:sP', // e-conomic timestamps, e.g. "2020-02-19T09:18:09Z" (P accepts the Z suffix)
+                'Y-m-d\TH:i:s.uP',
+                '!Y-m-d', // e-conomic date-only fields, e.g. "2026-05-01" — `!` resets the time to 00:00:00 UTC
+                'U',
+                'U.u',
+            )
             ->registerConverter(new RawStamper())
         ;
+    }
+
+    /**
+     * The default Valinor {@see MapperBuilder} the SDK uses when no consumer-supplied builder
+     * is injected.
+     */
+    private static function defaultMapperBuilder(): MapperBuilder
+    {
+        return self::configureMapperBuilder(new MapperBuilder());
     }
 
     /**
