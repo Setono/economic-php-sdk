@@ -66,6 +66,105 @@ final class ExceptionHierarchyTest extends TestCase
     }
 
     #[Test]
+    public function client_threads_request_context_into_dispatched_exception(): void
+    {
+        // `Client::assertStatusCode()` threads the outgoing request into the typed exception
+        // so the default message includes `[METHOD URL]`. Sanity-checks the wiring end-to-end.
+        $client = new Client('app', 'agreement', httpClient: new FixedStatusHttpClient(404));
+
+        try {
+            $client->get('products/missing');
+            self::fail('expected NotFoundException');
+        } catch (NotFoundException $e) {
+            self::assertStringContainsString(
+                '[GET https://restapi.e-conomic.com/products/missing]',
+                $e->getMessage(),
+            );
+        }
+    }
+
+    #[Test]
+    public function lazy_parse_works_after_client_dispatch_even_with_pre_consumed_body(): void
+    {
+        // `Client::assertStatusCode()` pre-reads the response body so the lazy-parse getters
+        // survive PSR-18 implementations that return non-seekable streams. This test asserts
+        // the wiring: an exception thrown via the dispatch path must expose the parsed
+        // errorCode / logId / validationErrors even when the body wasn't re-read.
+        $errorDoc = (string) json_encode([
+            'errorCode' => 1100,
+            'logId' => 'abc-123',
+            'errors' => ['currency' => ['errors' => [['errorCode' => 'E06000', 'message' => 'invalid']]]],
+        ]);
+
+        $http = new readonly class($errorDoc) implements HttpClientInterface {
+            public function __construct(private string $body)
+            {
+            }
+
+            public function sendRequest(RequestInterface $request): ResponseInterface
+            {
+                // Use a Stream and pre-consume it to simulate non-seekable behavior.
+                $stream = \Nyholm\Psr7\Stream::create($this->body);
+                (string) $stream; // consume
+
+                return new Response(422, ['Content-Type' => 'application/json'], $stream);
+            }
+        };
+
+        $client = new Client('app', 'agreement', httpClient: $http);
+
+        try {
+            $client->get('/anything');
+            self::fail('expected ValidationException');
+        } catch (ValidationException $e) {
+            self::assertSame(1100, $e->getErrorCode());
+            self::assertSame('abc-123', $e->getLogId());
+            self::assertSame(
+                ['currency' => ['errors' => [['errorCode' => 'E06000', 'message' => 'invalid']]]],
+                $e->getValidationErrors(),
+            );
+        }
+    }
+
+    #[Test]
+    public function network_errors_from_the_psr18_layer_propagate_unwrapped_to_the_consumer(): void
+    {
+        // The SDK does NOT wrap PSR-18 NetworkExceptionInterface / ClientExceptionInterface.
+        // Consumers needing retry behavior wrap their PSR-18 client with retry middleware; the
+        // SDK refuses to take on transient-error policy. This locks that contract.
+        $networkError = new class('connection refused') extends \RuntimeException implements \Psr\Http\Client\NetworkExceptionInterface {
+            public function getRequest(): RequestInterface
+            {
+                throw new \LogicException('not used in this test');
+            }
+        };
+
+        $http = new readonly class($networkError) implements HttpClientInterface {
+            public function __construct(private \Psr\Http\Client\NetworkExceptionInterface $error)
+            {
+            }
+
+            public function sendRequest(RequestInterface $request): ResponseInterface
+            {
+                throw $this->error;
+            }
+        };
+
+        $client = new Client('app', 'agreement', httpClient: $http);
+
+        try {
+            $client->get('/anything');
+            self::fail('expected NetworkExceptionInterface to propagate');
+        } catch (\Psr\Http\Client\NetworkExceptionInterface $e) {
+            self::assertSame($networkError, $e, 'the same instance must propagate unwrapped');
+            // PHPStan reads the anonymous class declaration and knows it does NOT implement
+            // EconomicException, so the assertion below is omitted (it would be tautological).
+            // The behavioral test above (`catch (NetworkExceptionInterface)`) already locks the
+            // contract: network errors propagate as-is.
+        }
+    }
+
+    #[Test]
     public function every_concrete_exception_implements_economic_exception(): void
     {
         $exceptionDir = __DIR__ . '/../../src/Exception';

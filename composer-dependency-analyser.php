@@ -7,4 +7,6 @@ use ShipMonk\ComposerDependencyAnalyser\Config\ErrorType;
 
 return (new Configuration())
     ->addPathToExclude('tests')
+    ->ignoreErrorsOnPackage('psr/http-client-implementation', [ErrorType::UNUSED_DEPENDENCY])
+    ->ignoreErrorsOnPackage('psr/http-factory-implementation', [ErrorType::UNUSED_DEPENDENCY])
 ;

@@ -137,6 +137,36 @@ final class PaginationTest extends TestCase
     }
 
     #[Test]
+    public function mid_walk_failure_exhausts_the_generator_after_yielding_completed_pages(): void
+    {
+        // Non-transactional contract: items from completed pages have already been yielded
+        // by the time page N+1 fails. We drive the generator step-by-step here (rather than
+        // foreach + try/catch) so the assertions are tight and PHPStan can follow the flow.
+        $base = 'https://restapi.e-conomic.com';
+        $http = new ScriptedHttpClient()
+            ->on(
+                $base . '/products?skippages=0&pagesize=20',
+                self::pageJson(['p1'], nextUrl: $base . '/products?skippages=1&pagesize=20'),
+            )
+            ->on(
+                $base . '/products?skippages=1&pagesize=20',
+                new \Nyholm\Psr7\Response(500),
+            )
+        ;
+        $client = new Client('app', 'agreement', httpClient: $http);
+
+        $generator = $client->products()->paginate();
+
+        // Page 1 yields successfully — `current()` runs the generator body up to the first yield.
+        // (Generator<T>::current() is non-null when the generator is still valid; PHPStan knows.)
+        self::assertSame('p1', $generator->current()->name);
+
+        // Page 2 fails. Continuing the generator triggers the 500-throw exactly here.
+        $this->expectException(\Setono\Economic\Exception\InternalServerErrorException::class);
+        $generator->next();
+    }
+
+    #[Test]
     public function leaf_endpoints_inherit_pagination_machinery_from_collection_endpoint(): void
     {
         $leaves = [ProductsEndpoint::class, DraftOrdersEndpoint::class, SentOrdersEndpoint::class, BookedInvoicesEndpoint::class];

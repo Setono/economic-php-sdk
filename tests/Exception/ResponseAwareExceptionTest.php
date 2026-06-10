@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Exception;
 
+use Nyholm\Psr7\Request;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\Stream;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -118,6 +119,71 @@ final class ResponseAwareExceptionTest extends TestCase
         self::assertNull($e->getDeveloperHint());
         self::assertNull($e->getLogId());
         self::assertNull($e->getLogTime());
+    }
+
+    #[Test]
+    public function pre_read_body_is_used_in_preference_to_the_response_stream(): void
+    {
+        // The pre-supplied body wins; the response's own body is not consulted.
+        // This is the contract `Client::assertStatusCode()` relies on so that the lazy-parse
+        // getters survive non-seekable PSR-7 streams whose body has already been consumed.
+        $preReadBody = '{"errorCode":1100,"developerHint":"Try x"}';
+
+        // Note the response carries a *different* body — proving the pre-supplied value wins.
+        $response = new Response(404, [], '{"errorCode":9999}');
+
+        $e = new NotFoundException($response, body: $preReadBody);
+
+        self::assertSame(1100, $e->getErrorCode());
+        self::assertSame('Try x', $e->getDeveloperHint());
+    }
+
+    #[Test]
+    public function lazy_parse_survives_a_consumed_non_seekable_stream_when_body_is_pre_supplied(): void
+    {
+        // Simulate a PSR-7 stream that has already been read by Client::assertStatusCode().
+        // Many real PSR-18 implementations return non-seekable streams; after a single read
+        // the stream yields "" on subsequent (string) casts.
+        $stream = Stream::create('{"errorCode":1100,"logId":"abc-123"}');
+        $bodyText = (string) $stream; // consume
+
+        $response = new Response(404, [], $stream);
+
+        $e = new NotFoundException($response, body: $bodyText);
+
+        self::assertSame(1100, $e->getErrorCode());
+        self::assertSame('abc-123', $e->getLogId());
+    }
+
+    #[Test]
+    public function default_message_embeds_method_and_url_when_request_is_provided(): void
+    {
+        $request = new Request('GET', 'https://restapi.e-conomic.com/products/5');
+        $response = new Response(404);
+
+        $e = new NotFoundException($response, request: $request);
+
+        self::assertStringContainsString('[GET https://restapi.e-conomic.com/products/5]', $e->getMessage());
+    }
+
+    #[Test]
+    public function default_message_strips_query_string_and_fragment_from_url(): void
+    {
+        // Secrets accidentally placed in the query string (or appended via $query) must NOT
+        // leak into exception messages or logs.
+        $request = new Request(
+            'GET',
+            'https://restapi.e-conomic.com/products?secret=foo&apikey=bar#section',
+        );
+        $response = new Response(500);
+
+        $e = new InternalServerErrorException($response, request: $request);
+
+        $message = $e->getMessage();
+        self::assertStringNotContainsString('secret', $message);
+        self::assertStringNotContainsString('apikey', $message);
+        self::assertStringNotContainsString('section', $message);
+        self::assertStringContainsString('[GET https://restapi.e-conomic.com/products]', $message);
     }
 
     /**

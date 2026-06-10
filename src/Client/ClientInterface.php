@@ -7,11 +7,13 @@ namespace Setono\Economic\Client;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Setono\Economic\Client\Endpoint\CustomersEndpoint;
 use Setono\Economic\Client\Endpoint\InvoicesEndpoint;
 use Setono\Economic\Client\Endpoint\OrdersEndpoint;
 use Setono\Economic\Client\Endpoint\ProductsEndpoint;
 use Setono\Economic\Client\Endpoint\SelfEndpoint;
 use Setono\Economic\Exception\EconomicException;
+use Setono\Economic\Request\Payload;
 
 interface ClientInterface
 {
@@ -55,6 +57,26 @@ interface ClientInterface
      *     or does not decode to an object
      */
     public function get(string $uri, array $query = []): array;
+
+    /**
+     * POST the given typed request DTO to `$uri` and return the decoded JSON body.
+     *
+     * `$body` is normalized to JSON via the SDK's `NormalizerBuilder` (with the `Identifier`
+     * transformer and the `Payload` null-skipping transformer registered). The `$body`
+     * parameter is typed as `Payload` to enforce wiring — non-Payload objects bypass the
+     * null-skipper and would ship `"field": null` keys. For raw-array payloads, use
+     * {@see self::request()} directly with a hand-built PSR-7 request.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws \Setono\Economic\Exception\InvalidUrlException if `$uri` is absolute and points to a different host than the base URI
+     * @throws ClientExceptionInterface if an error happens while processing the request
+     * @throws EconomicException if the response is non-2xx (concrete subtype depends on the status code)
+     * @throws \Setono\Economic\Exception\MalformedResponseException if the response body is not valid JSON or does not decode to an object
+     */
+    public function post(string $uri, Payload $body): array;
+
+    public function customers(): CustomersEndpoint;
 
     public function invoices(): InvoicesEndpoint;
 

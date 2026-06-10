@@ -4,8 +4,24 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Exception;
 
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Base class for exceptions that carry an HTTP response from e-conomic.
+ *
+ * The optional `$body` and `$request` constructor parameters exist to make the lazy-parse
+ * getters (`getErrorCode()`, `getLogId()`, `getValidationErrors()`, …) robust against
+ * non-seekable PSR-7 streams. When the body has already been read from the response stream
+ * — e.g. when the SDK pre-reads it inside `Client::assertStatusCode()` so it can be passed
+ * here — supplying `$body` lets `parseBody()` use the cached text instead of re-reading the
+ * stream (which would yield `""` on non-seekable implementations and silently degrade every
+ * getter to `null` / `[]`).
+ *
+ * Supplying `$request` embeds a sanitized `[METHOD URL]` segment in the default message.
+ * The URL is sanitized — query string and fragment stripped — so secrets a consumer may
+ * have passed via `$query` are not leaked into error messages or logs.
+ */
 abstract class ResponseAwareException extends \RuntimeException implements EconomicException
 {
     /** @var array<string, mixed>|null */
@@ -17,13 +33,21 @@ abstract class ResponseAwareException extends \RuntimeException implements Econo
         private readonly ResponseInterface $response,
         ?string $message = null,
         ?\Throwable $previous = null,
+        ?string $body = null,
+        ?RequestInterface $request = null,
     ) {
-        if (null === $message) {
-            $message = sprintf('The status code was: %d.', $response->getStatusCode());
+        if (null !== $body) {
+            $this->parsed = true;
+            $this->parsedBody = self::tryDecode($body);
+        }
 
-            $body = trim((string) $response->getBody());
-            if ('' !== $body) {
-                $message .= sprintf(' The body was: %s.', $body);
+        if (null === $message) {
+            $context = self::buildRequestContext($request);
+            $message = sprintf('The status code was: %d.%s', $response->getStatusCode(), $context);
+
+            $bodyText = trim($body ?? (string) $response->getBody());
+            if ('' !== $bodyText) {
+                $message .= sprintf(' The body was: %s.', $bodyText);
             }
 
             $message = trim($message);
@@ -142,24 +166,48 @@ abstract class ResponseAwareException extends \RuntimeException implements Econo
 
         $this->parsed = true;
 
-        $body = (string) $this->response->getBody();
-        if ('' === $body) {
-            return $this->parsedBody = null;
+        return $this->parsedBody = self::tryDecode((string) $this->response->getBody());
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function tryDecode(string $body): ?array
+    {
+        if ('' === trim($body)) {
+            return null;
         }
 
         try {
             $decoded = json_decode($body, true, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            return $this->parsedBody = null;
+            return null;
         }
 
         if (!is_array($decoded)) {
-            return $this->parsedBody = null;
+            return null;
         }
 
-        /** @var array<string, mixed> $body */
-        $body = $decoded;
+        /** @var array<string, mixed> $result */
+        $result = $decoded;
 
-        return $this->parsedBody = $body;
+        return $result;
+    }
+
+    /**
+     * Build the ` [METHOD URL]` context segment for the default exception message.
+     *
+     * Strips query string and fragment so any consumer-supplied secrets in query parameters
+     * (e.g. a token accidentally placed in `$query`) are not exposed in error messages or logs.
+     */
+    private static function buildRequestContext(?RequestInterface $request): string
+    {
+        if (null === $request) {
+            return '';
+        }
+
+        $sanitizedUri = $request->getUri()->withQuery('')->withFragment('');
+
+        return sprintf(' [%s %s]', $request->getMethod(), (string) $sanitizedUri);
     }
 }

@@ -27,6 +27,7 @@ return static function (RectorConfig $rectorConfig): void {
             __DIR__ . '/src/Response/Invoice/BookedInvoice.php',
             __DIR__ . '/src/Response/Collection/Collection.php',
             __DIR__ . '/src/Response/Self_/Self_.php',
+            __DIR__ . '/src/Response/Customer/Customer.php',
         ],
     ]);
 };

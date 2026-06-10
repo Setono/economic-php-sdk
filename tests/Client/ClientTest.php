@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Setono\Economic\Client;
 
 use CuyZ\Valinor\MapperBuilder;
+use CuyZ\Valinor\NormalizerBuilder;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -84,6 +85,54 @@ final class ClientTest extends TestCase
 
         self::assertNull($client->lastRequest);
         self::assertNull($client->lastResponse);
+    }
+
+    #[Test]
+    public function get_accepts_mixed_case_host_variants_of_the_base_uri(): void
+    {
+        // RFC 3986: hostnames are case-insensitive. Server-issued pagination URLs occasionally
+        // arrive in mixed case; the SDK MUST accept them so the host check doesn't reject the
+        // server's own response. Without lowercasing both sides this would throw.
+        $httpClient = new MockHttpClient();
+        $client = self::createClient($httpClient);
+
+        $client->get('https://RESTAPI.E-CONOMIC.COM/products');
+
+        // Nyholm's PSR-7 implementation normalizes the host to lowercase per RFC 3986 (URI
+        // syntax: scheme + host are case-insensitive). The SDK's role is just to accept the
+        // mixed-case input; the PSR-7 layer normalizes on the way out.
+        self::assertNotNull($httpClient->lastRequest);
+        self::assertSame(
+            'https://restapi.e-conomic.com/products',
+            (string) $httpClient->lastRequest->getUri(),
+        );
+    }
+
+    #[Test]
+    public function get_refuses_non_default_port_on_the_base_host(): void
+    {
+        // A URL that points at the right host but a wildly different port could be a credential-
+        // exfil vector under DNS/network compromise. The SDK rejects any explicit non-default
+        // port for the scheme (e-conomic uses HTTPS / 443).
+        $httpClient = new MockHttpClient();
+        $client = self::createClient($httpClient);
+
+        $this->expectException(InvalidUrlException::class);
+
+        $client->get('https://restapi.e-conomic.com:9999/products');
+    }
+
+    #[Test]
+    public function get_accepts_explicit_default_https_port(): void
+    {
+        // Belt-and-suspenders: explicit `:443` on an HTTPS URL is functionally identical to
+        // omitting the port; the SDK must NOT reject it.
+        $httpClient = new MockHttpClient();
+        $client = self::createClient($httpClient);
+
+        $client->get('https://restapi.e-conomic.com:443/products');
+
+        self::assertNotNull($httpClient->lastRequest);
     }
 
     #[Test]
@@ -188,6 +237,15 @@ final class ClientTest extends TestCase
 
         $this->expectException(MalformedResponseException::class);
         $client->get('products');
+    }
+
+    #[Test]
+    public function it_returns_same_customers_endpoint(): void
+    {
+        $client = self::createClient();
+        $endpoint = $client->customers();
+
+        self::assertSame($endpoint, $client->customers());
     }
 
     #[Test]
@@ -298,7 +356,7 @@ final class ClientTest extends TestCase
 
         $reflection = new \ReflectionClass($client);
 
-        foreach (['httpClient', 'requestFactory', 'streamFactory', 'mapperBuilder'] as $property) {
+        foreach (['httpClient', 'requestFactory', 'streamFactory', 'mapperBuilder', 'normalizerBuilder'] as $property) {
             $prop = $reflection->getProperty($property);
             self::assertNotNull(
                 $prop->getValue($client),
@@ -327,12 +385,80 @@ final class ClientTest extends TestCase
         // Locks the immutability requirement: once constructed, collaborators cannot be swapped.
         $reflection = new \ReflectionClass(Client::class);
 
-        foreach (['setHttpClient', 'setRequestFactory', 'setStreamFactory', 'setMapperBuilder'] as $forbidden) {
+        foreach (['setHttpClient', 'setRequestFactory', 'setStreamFactory', 'setMapperBuilder', 'setNormalizerBuilder'] as $forbidden) {
             self::assertFalse(
                 $reflection->hasMethod($forbidden),
                 sprintf('Client must not expose %s() — collaborators are constructor-injected only', $forbidden),
             );
         }
+    }
+
+    #[Test]
+    public function consumer_supplied_content_type_is_preserved_by_request(): void
+    {
+        // The documented escape hatch for non-JSON endpoints (PDFs, attachments) routes
+        // through `Client::request()`. The SDK MUST NOT clobber the consumer's Content-Type.
+        $httpClient = new MockHttpClient();
+        $client = self::createClient($httpClient);
+
+        $requestFactory = new Psr17Factory();
+        $request = $requestFactory
+            ->createRequest('GET', 'https://restapi.e-conomic.com/invoices/booked/1/pdf')
+            ->withHeader('Content-Type', 'application/pdf')
+        ;
+
+        $client->request($request);
+
+        self::assertNotNull($httpClient->lastRequest);
+        self::assertSame('application/pdf', $httpClient->lastRequest->getHeaderLine('Content-Type'));
+    }
+
+    #[Test]
+    public function default_content_type_application_json_is_stamped_when_consumer_did_not_set_it(): void
+    {
+        $httpClient = new MockHttpClient();
+        $client = self::createClient($httpClient);
+
+        $requestFactory = new Psr17Factory();
+        $request = $requestFactory->createRequest('GET', 'https://restapi.e-conomic.com/products');
+
+        $client->request($request);
+
+        self::assertNotNull($httpClient->lastRequest);
+        self::assertSame('application/json', $httpClient->lastRequest->getHeaderLine('Content-Type'));
+    }
+
+    #[Test]
+    public function constructor_rejects_a_bare_normalizer_builder_with_a_descriptive_error(): void
+    {
+        // A consumer who supplies their own NormalizerBuilder (for caching) but forgets to call
+        // Client::registerNormalizerTransformers() ships silently broken code: Identifier
+        // serializes as Valinor's default object shape ({"fieldName":"...","value":...}) and
+        // Payload null-skipping is disabled. The defensive probe at construction time catches
+        // this with a remediation hint in the message.
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/Client::registerNormalizerTransformers/');
+
+        new Client(
+            'app-secret-token',
+            'agreement-grant-token',
+            normalizerBuilder: new NormalizerBuilder(),
+        );
+    }
+
+    #[Test]
+    public function constructor_accepts_a_normalizer_builder_wired_via_the_sdk_helper(): void
+    {
+        $custom = Client::registerNormalizerTransformers(new NormalizerBuilder());
+
+        $client = new Client(
+            'app-secret-token',
+            'agreement-grant-token',
+            normalizerBuilder: $custom,
+        );
+
+        // Sanity: the builder we wired ends up being the one the Client uses.
+        self::assertSame($custom, $client->getNormalizerBuilder());
     }
 
     private static function createClient(?HttpClientInterface $httpClient = null): Client

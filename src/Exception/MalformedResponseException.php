@@ -11,7 +11,10 @@ namespace Setono\Economic\Exception;
  * decode to a top-level object/array. The PSR response is preserved on the exception (via
  * `getResponse()` from the base class); the lazy-parse getters (`getErrorCode()`, `getLogId()`,
  * `getValidationErrors()`, etc.) degrade gracefully to `null` / `[]` because the body is junk.
+ *
+ * NOT `final` — see {@see MappingException} for the narrower case where the JSON decoded
+ * successfully but didn't fit the SDK's typed DTO shape.
  */
-final class MalformedResponseException extends ResponseAwareException
+class MalformedResponseException extends ResponseAwareException
 {
 }

@@ -57,6 +57,14 @@ abstract class CollectionEndpoint extends ResourceEndpoint
      * Walk all pages by following the server-provided `pagination.nextPage.url`.
      * Yields every item across all pages, in server order.
      *
+     * **Non-transactional contract.** If an exception is thrown while fetching page N+1
+     * (any `EconomicException` or `Psr\Http\Client\ClientExceptionInterface`), items from
+     * page N have already been yielded and the generator is exhausted. The consumer cannot
+     * resume from where it left off — re-invoking `paginate()` restarts at page 1 and may
+     * yield duplicates. For reliable recovery, track processed identifiers externally
+     * (de-dupe by `getByNumber`-style id) or wrap your PSR-18 client with retry middleware
+     * so transient failures don't propagate. The SDK does NOT bake retry into the walker.
+     *
      * @return \Generator<T>
      */
     public function paginate(?CollectionRequestOptions $opts = null): \Generator
@@ -91,8 +99,10 @@ abstract class CollectionEndpoint extends ResourceEndpoint
         // polymorphic Resource converter registered in Client::getMapperBuilder().
         // NOTE: pass `$data` directly (not `Source::array($data)`); see ResourceEndpoint::getOne
         // for why — the Source wrapper would prevent the $raw-stamping converter from matching.
+        // `mapResource` (inherited) wraps Valinor's `MappingError` into a SDK `MappingException`
+        // with HTTP context preserved.
         /** @var Collection<T> $page */
-        $page = $this->mapperBuilder->mapper()->map($signature, $data);
+        $page = $this->mapResource($signature, $data);
 
         return $page;
     }
