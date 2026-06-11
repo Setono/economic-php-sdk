@@ -25,7 +25,7 @@ final class CollectionRequestOptionsTest extends TestCase
     #[Test]
     public function it_serializes_to_array(): void
     {
-        $options = new CollectionRequestOptions(0, 20, 'name$like:b', 'name');
+        $options = new CollectionRequestOptions(0, 20, Filter::like('name', 'b'), 'name');
 
         self::assertSame([
             'skippages' => 0,
@@ -71,12 +71,28 @@ final class CollectionRequestOptionsTest extends TestCase
     }
 
     #[Test]
+    public function it_accepts_a_filter_in_the_constructor(): void
+    {
+        $options = new CollectionRequestOptions(filter: Filter::eq('name', 'Joe'));
+
+        self::assertSame('name$eq:Joe', $options->filter?->__toString());
+    }
+
+    #[Test]
+    public function with_filter_accepts_a_filter(): void
+    {
+        $options = CollectionRequestOptions::new()->withFilter(Filter::like('name', 'b'));
+
+        self::assertSame('name$like:b', $options->filter?->__toString());
+    }
+
+    #[Test]
     public function with_builders_produce_new_instances(): void
     {
         $a = new CollectionRequestOptions();
         $b = $a->withSkipPages(5);
         $c = $b->withPageSize(50);
-        $d = $c->withFilter('foo')->withSortBy('bar');
+        $d = $c->withFilter(Filter::eq('name', 'foo'))->withSortBy('bar');
 
         self::assertNotSame($a, $b);
         self::assertNotSame($b, $c);
@@ -84,7 +100,7 @@ final class CollectionRequestOptionsTest extends TestCase
         self::assertSame(0, $a->skipPages);
         self::assertSame(5, $b->skipPages);
         self::assertSame(50, $c->pageSize);
-        self::assertSame('foo', $d->filter);
+        self::assertSame('name$eq:foo', $d->filter?->__toString());
         self::assertSame('bar', $d->sortBy);
     }
 }

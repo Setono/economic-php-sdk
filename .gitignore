@@ -7,3 +7,8 @@
 /.build/
 /.claude/
 /bin/
+
+# Local environment files (never commit credentials)
+.env
+.env.local
+.env.*.local

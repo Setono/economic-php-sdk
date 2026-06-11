@@ -11,7 +11,7 @@ final readonly class CollectionRequestOptions
     public function __construct(
         public int $skipPages = 0,
         public int $pageSize = 20,
-        public ?string $filter = null,
+        public ?Filter $filter = null,
         public ?string $sortBy = null,
     ) {
         Assert::greaterThanEq($skipPages, 0);
@@ -34,7 +34,7 @@ final readonly class CollectionRequestOptions
         return new self($this->skipPages, $pageSize, $this->filter, $this->sortBy);
     }
 
-    public function withFilter(string $filter): self
+    public function withFilter(Filter $filter): self
     {
         return new self($this->skipPages, $this->pageSize, $filter, $this->sortBy);
     }
@@ -52,7 +52,7 @@ final readonly class CollectionRequestOptions
         return [
             'skippages' => $this->skipPages,
             'pagesize' => $this->pageSize,
-            'filter' => $this->filter,
+            'filter' => $this->filter?->__toString(),
             'sort' => $this->sortBy,
         ];
     }

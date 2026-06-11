@@ -99,13 +99,14 @@ $customer->raw['contacts'] ?? null;
 ```php
 use Setono\Economic\Client\Client;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Request\Filter;
 
 $client = new Client('demo', 'demo');
 
 $page = $client->products()->getPage(
     new CollectionRequestOptions(
         pageSize: 50,
-        filter:   'name$like:b',
+        filter:   Filter::like('name', 'b'),
         sortBy:   'name',
     ),
 );
@@ -125,10 +126,33 @@ $page->pagination->nextPage?->url;       // ?string — null on the last page
 ```php
 $opts = new CollectionRequestOptions(pageSize: 50);
 $nameSorted = $opts->withSortBy('name');
-$nameFiltered = $opts->withFilter('name$like:b');
+$nameFiltered = $opts->withFilter(Filter::like('name', 'b'));
 ```
 
-See [e-conomic's filter syntax](https://restdocs.e-conomic.com/#filter-operators) for the full `$like` / `$gt` / `$in:` operator set.
+### Filtering
+
+`Filter` builds [e-conomic filter expressions](https://restdocs.e-conomic.com/#filter-operators) with a static factory per operator — `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `like`, `in`, `nin` — combined with `->and()` / `->or()`:
+
+```php
+use Setono\Economic\Request\Filter;
+
+// e.g. incremental sync: everything updated since the last run.
+// Any \DateTimeInterface is converted to UTC and formatted for the wire — no
+// manual ->setTimezone()/->format() needed:
+$options = $options->withFilter(Filter::gte('lastUpdated', $lastSynchronization));
+
+Filter::eq('email', null);                      // email$eq:$null:  (null = e-conomic's $null: sentinel)
+Filter::like('city', '*port');                  // city$like:*port  (* wildcard; without it, "contains")
+Filter::in('customerNumber', [2, 5, 7]);        // customerNumber$in:[2,5,7]  (max 200 elements)
+Filter::eq('name', 'Joe')->and(                 // name$eq:Joe$and:(city$like:*port$or:age$lt:40)
+    Filter::like('city', '*port')->or(Filter::lt('age', 40)),
+);
+```
+
+Special characters in values (`$ ( ) * , [ ]`) are escaped automatically, so user input is safe to pass straight through. Two conventions to know:
+
+- **Date-only fields** (e.g. invoice `date`) expect a plain `Y-m-d` value — pass a string: `Filter::gte('date', '2026-01-01')`. A `\DateTimeInterface` always renders as a full UTC timestamp, which suits datetime fields like `lastUpdated`.
+- **`Filter::raw('...')`** wraps a hand-written expression verbatim (no escaping, no validation) for anything the factories can't express — e.g. a literal `*` in a `$like:` value. It composes with `->and()` / `->or()` like any other filter.
 
 ### Paginate (walk all pages)
 
@@ -136,6 +160,7 @@ See [e-conomic's filter syntax](https://restdocs.e-conomic.com/#filter-operators
 <?php
 use Setono\Economic\Client\Client;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Request\Filter;
 
 $client = new Client('demo', 'demo');
 
@@ -144,7 +169,7 @@ foreach ($client->products()->paginate() as $product) {
 }
 
 // With filter / sort:
-foreach ($client->products()->paginate(new CollectionRequestOptions(filter: 'name$like:b', sortBy: 'name')) as $product) {
+foreach ($client->products()->paginate(new CollectionRequestOptions(filter: Filter::like('name', 'b'), sortBy: 'name')) as $product) {
     // ...
 }
 ```

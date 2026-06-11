@@ -12,6 +12,7 @@ use Setono\Economic\Client\Endpoint\Invoices\BookedInvoicesEndpoint;
 use Setono\Economic\Client\Endpoint\Orders\DraftOrdersEndpoint;
 use Setono\Economic\Client\Endpoint\Orders\SentOrdersEndpoint;
 use Setono\Economic\Request\CollectionRequestOptions;
+use Setono\Economic\Request\Filter;
 use Setono\Economic\Response\Collection\Collection;
 use Setono\Economic\TestDouble\ScriptedHttpClient;
 
@@ -44,7 +45,7 @@ final class PaginationTest extends TestCase
         $client = new Client('app', 'agreement', httpClient: $http);
 
         $names = [];
-        foreach ($client->products()->paginate(new CollectionRequestOptions(filter: 'name$like:b')) as $product) {
+        foreach ($client->products()->paginate(new CollectionRequestOptions(filter: Filter::like('name', 'b'))) as $product) {
             $names[] = $product->name;
         }
 
