@@ -224,7 +224,7 @@ Plus a catch-all `UnexpectedStatusCodeException` for non-2xx codes that don't ma
 
 These are three independent simplifications grouped because they share the same justification: each is an abstraction whose ongoing cost (extra class to maintain, extra interface to keep in sync, extra wiring to thread) exceeds the value it delivers in the current code.
 
-**`Query`:** wraps an array with `isEmpty()` and `__toString()`. Both inlinable in `Client::get()` in a single line each. No code in the SDK or README builds a `Query` ahead of time and passes it around. `CollectionRequestOptions::asQuery()` becomes `toArray(): array<string, scalar|null>`.
+**`Query`:** wraps an array with `isEmpty()` and `toString()`. Both inlinable in `Client::get()` in a single line each. No code in the SDK or README builds a `Query` ahead of time and passes it around. `CollectionRequestOptions::asQuery()` becomes `toArray(): array<string, scalar|null>`.
 
 **Endpoint interfaces:** `ProductsEndpointInterface`, `OrdersEndpointInterface`, `InvoicesEndpointInterface`, and the base `EndpointInterface` all go. The concrete classes are `final`; consumers test against them via `Client::setHttpClient()` with a fake PSR-18 client. `ClientInterface` is kept (per user request) because downstream tests want to mock the client itself.
 

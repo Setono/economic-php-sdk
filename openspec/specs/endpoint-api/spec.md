@@ -58,7 +58,7 @@ Every leaf collection sub-endpoint (`ProductsEndpoint`, `DraftOrdersEndpoint`, `
 
 #### Scenario: getPage applies request options
 
-- **WHEN** the consumer calls `$client->products()->getPage(new CollectionRequestOptions(pageSize: 50, filter: 'name$like:b'))`
+- **WHEN** the consumer calls `$client->products()->getPage(new CollectionRequestOptions(pageSize: 50, filter: Filter::like('name', 'b')))`
 - **THEN** the outgoing request carries the matching `pagesize` and `filter` query parameters
 
 #### Scenario: getByNumber successful lookup
@@ -105,7 +105,7 @@ Every leaf collection sub-endpoint (`ProductsEndpoint`, `DraftOrdersEndpoint`, `
 
 #### Scenario: paginate applies request options on the first page
 
-- **WHEN** the consumer iterates over `$client->products()->paginate(new CollectionRequestOptions(pageSize: 100, filter: 'name$like:b'))`
+- **WHEN** the consumer iterates over `$client->products()->paginate(new CollectionRequestOptions(pageSize: 100, filter: Filter::like('name', 'b')))`
 - **THEN** the first request carries `pagesize=100` and the matching `filter`
 - **AND** subsequent page requests follow `nextPage.url` (which already encodes the options)
 
@@ -174,7 +174,7 @@ Leaf sub-endpoints MUST NOT reimplement `getPage` or `paginate`. They implement 
 
 ### Requirement: Collection request options are immutable
 
-`CollectionRequestOptions` SHALL be a `final readonly` class with constructor-promoted fields `skipPages` (int, default 0), `pageSize` (int, default 20), `filter` (?string, default null), and `sortBy` (?string, default null). It MUST provide `withX(...)` builders that return a new instance, and a `toArray(): array<string, scalar|null>` method that serializes the options into query parameters. `pageSize` MUST be validated `>= 1 AND <= 1000` (the e-conomic server maximum).
+`CollectionRequestOptions` SHALL be a `final readonly` class with constructor-promoted fields `skipPages` (int, default 0), `pageSize` (int, default 20), `filter` (?Filter, default null), and `sortBy` (?string, default null). It MUST provide `withX(...)` builders that return a new instance, and a `toArray(): array<string, scalar|null>` method that serializes the options into query parameters — the `filter` entry being the rendered (unencoded) filter expression. `pageSize` MUST be validated `>= 1 AND <= 1000` (the e-conomic server maximum). Raw filter strings are NOT accepted; hand-written expressions enter through `Filter::raw()`.
 
 #### Scenario: Defaults
 
@@ -183,7 +183,7 @@ Leaf sub-endpoints MUST NOT reimplement `getPage` or `paginate`. They implement 
 
 #### Scenario: toArray produces the wire format
 
-- **WHEN** the consumer calls `(new CollectionRequestOptions(0, 20, 'name$like:b', 'name'))->toArray()`
+- **WHEN** the consumer calls `(new CollectionRequestOptions(0, 20, Filter::like('name', 'b'), 'name'))->toArray()`
 - **THEN** the result is `['skippages' => 0, 'pagesize' => 20, 'filter' => 'name$like:b', 'sort' => 'name']`
 
 #### Scenario: Invalid values rejected
@@ -195,6 +195,38 @@ Leaf sub-endpoints MUST NOT reimplement `getPage` or `paginate`. They implement 
 - **THEN** an `\InvalidArgumentException` is thrown
 
 - **WHEN** the consumer constructs `new CollectionRequestOptions(pageSize: 1001)`
+- **THEN** an `\InvalidArgumentException` is thrown
+
+### Requirement: Typed filter builder
+
+`Setono\Economic\Request\Filter` SHALL be a `final readonly class` implementing `\Stringable` with a private constructor and one named static factory per e-conomic filter operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte` (value type `string|int|float|bool|\DateTimeInterface|null`), `like` (string value), and `in` / `nin` (`list<int|string|null>`, non-empty, max 200 elements per the e-conomic cap). Filters MUST combine via instance methods `and(self $other, self ...$others)` / `or(self $other, self ...$others)`, and `toString()` MUST return the unencoded e-conomic filter expression (URL encoding is the `Client`'s responsibility).
+
+Value rendering rules:
+- special characters in string values (`$ ( ) * , [ ]`) are `$`-escaped per e-conomic's escape table; in `like` values the `*` wildcard is preserved
+- `null` renders as the `$null:` sentinel (also as an `in`/`nin` list element)
+- `\DateTimeInterface` is converted to UTC (without mutating the input) and formatted `Y-m-d\TH:i:s\Z`; date-only fields take pre-formatted `Y-m-d` strings
+- `bool` renders as `true`/`false`; non-finite floats are rejected
+
+Because e-conomic does not document `$and:`/`$or:` precedence, any composite operand (including the receiver) MUST be parenthesized when combined. `Filter::raw(string)` SHALL wrap a hand-written expression verbatim (no escaping or validation) as the escape hatch for anything the factories cannot express; a raw filter is treated as composite when combined.
+
+#### Scenario: Comparison rendering
+
+- **WHEN** the consumer builds `Filter::gte('lastUpdated', new \DateTimeImmutable('2026-01-01 01:30:00', new \DateTimeZone('Europe/Copenhagen')))`
+- **THEN** `(string) $filter` is `lastUpdated$gte:2026-01-01T00:30:00Z`
+
+#### Scenario: Values are escaped
+
+- **WHEN** the consumer builds `Filter::eq('name', 'a$b(c)*d,e[f]')`
+- **THEN** `(string) $filter` is `name$eq:a$$b$(c$)$*d$,e$[f$]`
+
+#### Scenario: Composites are parenthesized
+
+- **WHEN** the consumer builds `Filter::eq('name', 'Joe')->and(Filter::like('city', '*port')->or(Filter::lt('age', 40)))`
+- **THEN** `(string) $filter` is `name$eq:Joe$and:(city$like:*port$or:age$lt:40)`
+
+#### Scenario: List constraints enforced
+
+- **WHEN** the consumer builds `Filter::in('customerNumber', [])` or passes more than 200 elements
 - **THEN** an `\InvalidArgumentException` is thrown
 
 ### Requirement: `Query` class is removed
