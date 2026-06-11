@@ -26,7 +26,7 @@ use Webmozart\Assert\Assert;
  * The schema's `priceGroup` field is NOT exposed here. Its schema shape is `{ self: string(uri) }`
  * with no `priceGroupNumber`, breaking the universal `{<x>Number: int}` identifier convention.
  * Consumers needing to set `priceGroup` use `Client::post('customers', $hand_built_payload)`
- * directly. See `openspec/changes/archive/<date>-create-customer/design.md` for the rationale.
+ * directly.
  *
  * Note on `eInvoicingDisabledByDefault`: per the e-conomic docs it is "updatable only by
  * using PATCH to /customers/:customerNumber" — mutating it on a prefilled request has no

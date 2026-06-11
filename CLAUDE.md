@@ -63,7 +63,7 @@ There are **no endpoint interfaces** — the concrete classes are `final` and co
 
 ## URL construction policy
 
-Lookups by ID (`products/:n`, `orders/drafts/:n`) deliberately concatenate via `sprintf`. Pagination follows the server-provided `pagination.nextPage.url`. Do NOT "fix" the concatenation to be pure HATEOAS — the e-conomic docs say "never concatenate any urls" but pure HATEOAS for direct lookups requires an extra `GET /` round-trip to discover URI templates, which is overkill for "fetch product 5." The trade-off is documented in `openspec/changes/v2-sdk-redesign/design.md`.
+Lookups by ID (`products/:n`, `orders/drafts/:n`) deliberately concatenate via `sprintf`. Pagination follows the server-provided `pagination.nextPage.url`. Do NOT "fix" the concatenation to be pure HATEOAS — the e-conomic docs say "never concatenate any urls" but pure HATEOAS for direct lookups requires an extra `GET /` round-trip to discover URI templates, which is overkill for "fetch product 5."
 
 ## Testing
 

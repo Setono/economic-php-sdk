@@ -95,7 +95,7 @@ final class Client implements ClientInterface
 
         // Only stamp Content-Type when absent — preserve a consumer-supplied value so the
         // documented escape hatch (e.g. binary uploads via `Client::request()`) actually
-        // escapes. See `openspec/specs/http-transport/spec.md`.
+        // escapes.
         if (!$request->hasHeader('Content-Type')) {
             $request = $request->withHeader('Content-Type', 'application/json');
         }
