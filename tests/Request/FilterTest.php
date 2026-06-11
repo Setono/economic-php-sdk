@@ -238,6 +238,15 @@ final class FilterTest extends TestCase
     }
 
     #[Test]
+    public function to_string_returns_the_same_expression_as_the_cast(): void
+    {
+        $filter = Filter::eq('name', 'Joe');
+
+        self::assertSame('name$eq:Joe', $filter->toString());
+        self::assertSame((string) $filter, $filter->toString());
+    }
+
+    #[Test]
     public function it_rejects_an_empty_field_name(): void
     {
         $this->expectException(\InvalidArgumentException::class);

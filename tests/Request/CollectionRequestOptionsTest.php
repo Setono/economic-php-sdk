@@ -75,7 +75,7 @@ final class CollectionRequestOptionsTest extends TestCase
     {
         $options = new CollectionRequestOptions(filter: Filter::eq('name', 'Joe'));
 
-        self::assertSame('name$eq:Joe', $options->filter?->__toString());
+        self::assertSame('name$eq:Joe', $options->filter?->toString());
     }
 
     #[Test]
@@ -83,7 +83,7 @@ final class CollectionRequestOptionsTest extends TestCase
     {
         $options = CollectionRequestOptions::new()->withFilter(Filter::like('name', 'b'));
 
-        self::assertSame('name$like:b', $options->filter?->__toString());
+        self::assertSame('name$like:b', $options->filter?->toString());
     }
 
     #[Test]
@@ -100,7 +100,7 @@ final class CollectionRequestOptionsTest extends TestCase
         self::assertSame(0, $a->skipPages);
         self::assertSame(5, $b->skipPages);
         self::assertSame(50, $c->pageSize);
-        self::assertSame('name$eq:foo', $d->filter?->__toString());
+        self::assertSame('name$eq:foo', $d->filter?->toString());
         self::assertSame('bar', $d->sortBy);
     }
 }

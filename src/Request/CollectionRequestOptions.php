@@ -52,7 +52,7 @@ final readonly class CollectionRequestOptions
         return [
             'skippages' => $this->skipPages,
             'pagesize' => $this->pageSize,
-            'filter' => $this->filter?->__toString(),
+            'filter' => $this->filter?->toString(),
             'sort' => $this->sortBy,
         ];
     }

@@ -199,7 +199,7 @@ Leaf sub-endpoints MUST NOT reimplement `getPage` or `paginate`. They implement 
 
 ### Requirement: Typed filter builder
 
-`Setono\Economic\Request\Filter` SHALL be a `final readonly class` implementing `\Stringable` with a private constructor and one named static factory per e-conomic filter operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte` (value type `string|int|float|bool|\DateTimeInterface|null`), `like` (string value), and `in` / `nin` (`list<int|string|null>`, non-empty, max 200 elements per the e-conomic cap). Filters MUST combine via instance methods `and(self $other, self ...$others)` / `or(self $other, self ...$others)`, and `__toString()` MUST return the unencoded e-conomic filter expression (URL encoding is the `Client`'s responsibility).
+`Setono\Economic\Request\Filter` SHALL be a `final readonly class` implementing `\Stringable` with a private constructor and one named static factory per e-conomic filter operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte` (value type `string|int|float|bool|\DateTimeInterface|null`), `like` (string value), and `in` / `nin` (`list<int|string|null>`, non-empty, max 200 elements per the e-conomic cap). Filters MUST combine via instance methods `and(self $other, self ...$others)` / `or(self $other, self ...$others)`, and `toString()` MUST return the unencoded e-conomic filter expression (URL encoding is the `Client`'s responsibility).
 
 Value rendering rules:
 - special characters in string values (`$ ( ) * , [ ]`) are `$`-escaped per e-conomic's escape table; in `like` values the `*` wildcard is preserved
