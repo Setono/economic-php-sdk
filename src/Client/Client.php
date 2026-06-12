@@ -30,7 +30,6 @@ use Setono\Economic\Exception\NotImplementedException;
 use Setono\Economic\Exception\UnauthorizedException;
 use Setono\Economic\Exception\UnexpectedStatusCodeException;
 use Setono\Economic\Exception\ValidationException;
-use Setono\Economic\Mapper\RawStamper;
 use Setono\Economic\Request\Identifier;
 use Setono\Economic\Request\Payload;
 
@@ -302,14 +301,21 @@ final class Client implements ClientInterface
      * ```
      *
      * Without this helper, a bare builder rejects e-conomic's responses outright: unmodeled
-     * schema fields fail without `allowSuperfluousKeys()`, `Resource::$raw` is never stamped
-     * (breaking `Payload::fromResponse()`), and date fields fail to map — `supportDateFormats()`
-     * below REPLACES Valinor's defaults with the two shapes e-conomic emits (`2020-02-19T09:18:09Z`
-     * timestamps and `2020-02-19` date-only fields) plus Valinor's stock timestamp formats.
-     * The date-only format is `!Y-m-d`, not `Y-m-d`: without `!`, PHP fills the time-of-day
-     * from the current wall clock, making mapped values nondeterministic.
+     * schema fields fail without `allowSuperfluousKeys()`, and date fields fail to map —
+     * `supportDateFormats()` below REPLACES Valinor's defaults with the two shapes e-conomic
+     * emits (`2020-02-19T09:18:09Z` timestamps and `2020-02-19` date-only fields) plus Valinor's
+     * stock timestamp formats. The date-only format is `!Y-m-d`, not `Y-m-d`: without `!`, PHP
+     * fills the time-of-day from the current wall clock, making mapped values nondeterministic.
      *
-     * See {@see RawStamper} for the rationale on the registered converter.
+     * This method deliberately registers NO converters: with a non-Closure converter registered
+     * (an invokable object, like the SDK's former `RawStamper`), Valinor's converter pipeline
+     * leaks a `ReflectionFunction` + closure per converted value node
+     * (https://github.com/CuyZ/Valinor/issues/800 — ~70KB per mapped object, fatal to
+     * long-running workers; https://github.com/Setono/economic-php-sdk/issues/7), and even
+     * `\Closure` converters pay per-node reflection overhead. `Resource::$raw` is stamped
+     * builder-independently in `ResourceEndpoint::mapResource()` via
+     * {@see \Setono\Economic\Response\RawStamper} instead. Consumers should likewise avoid
+     * `registerConverter()` on the builder they pass in until the upstream bug is fixed.
      */
     public static function configureMapperBuilder(MapperBuilder $builder): MapperBuilder
     {
@@ -325,7 +331,6 @@ final class Client implements ClientInterface
                 'U',
                 'U.u',
             )
-            ->registerConverter(new RawStamper())
         ;
     }
 

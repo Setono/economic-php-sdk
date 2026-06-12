@@ -1,8 +1,11 @@
 includes:
     # Valinor 2.x ships PHPStan extensions: type inference for mapper()->map() and ArgumentsMapper,
     # plus an opt-in extension that suppresses purity errors on registerConverter / registerTransformer /
-    # registerConstructor / infer (where the docblock declares @pure but real-world converters often
-    # need side effects, e.g. our RawStamper that mutates Resource::$raw).
+    # registerConstructor / infer. Valinor declares those parameters pure-callable; our remaining
+    # registrations (the Payload null-stripper closure in Client::registerNormalizerTransformers(),
+    # Identifier::fromReference() in Payload::requestMapper()) are pure in practice, but PHPStan
+    # cannot prove it — it ignores @param docblocks on closures entirely, and flags `new self` /
+    # array_map inside fromReference() as possibly impure.
     - vendor/cuyz/valinor/qa/PHPStan/valinor-phpstan-configuration.php
     - vendor/cuyz/valinor/qa/PHPStan/valinor-phpstan-suppress-pure-errors.php
 
