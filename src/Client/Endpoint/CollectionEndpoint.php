@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Setono\Economic\Client\Endpoint;
 
-use CuyZ\Valinor\Mapper\Source\Source;
 use Setono\Economic\Exception\NotFoundException;
 use Setono\Economic\Request\CollectionRequestOptions;
 use Setono\Economic\Response\Collection\Collection;
@@ -95,12 +94,9 @@ abstract class CollectionEndpoint extends ResourceEndpoint
             static::getItemClass(),
         );
 
-        // $raw is stamped — on the Collection envelope AND on every item inside it — by the
-        // polymorphic Resource converter registered in Client::getMapperBuilder().
-        // NOTE: pass `$data` directly (not `Source::array($data)`); see ResourceEndpoint::getOne
-        // for why — the Source wrapper would prevent the $raw-stamping converter from matching.
-        // `mapResource` (inherited) wraps Valinor's `MappingError` into a SDK `MappingException`
-        // with HTTP context preserved.
+        // `mapResource` (inherited) stamps $raw — on the Collection envelope AND on every item
+        // inside it — and wraps Valinor's `MappingError` into a SDK `MappingException` with
+        // HTTP context preserved.
         /** @var Collection<T> $page */
         $page = $this->mapResource($signature, $data);
 

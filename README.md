@@ -613,7 +613,9 @@ Strip the query and fragment from the logged URL (as above) so any consumer-supp
 
 The SDK uses [CuyZ/Valinor](https://github.com/CuyZ/Valinor) to map JSON ↔ DTOs. The mapping is expensive *without a cache*: Valinor introspects every target class on first use, then compiles the mapping. For production, share a single `Client` across the request lifecycle and supply cached Valinor builders.
 
-Two single-call helpers apply the SDK's required configuration to consumer-supplied builders. `Client::configureMapperBuilder()` wires the mapper side: superfluous-key tolerance (responses carry fields the DTOs don't model), the `$raw` stamping converter (without it `Payload::fromResponse()` breaks), and the date formats e-conomic emits. `Client::registerNormalizerTransformers()` wires the SDK's `Identifier` serializer **and** the `Payload` null-skipping transformer onto a `NormalizerBuilder` — forget it and the SDK will throw at `Client::__construct` with a remediation hint.
+Two single-call helpers apply the SDK's required configuration to consumer-supplied builders. `Client::configureMapperBuilder()` wires the mapper side: superfluous-key tolerance (responses carry fields the DTOs don't model) and the date formats e-conomic emits. (`$raw` stamping happens in the SDK's endpoint layer after mapping, so it works with any builder.) `Client::registerNormalizerTransformers()` wires the SDK's `Identifier` serializer **and** the `Payload` null-skipping transformer onto a `NormalizerBuilder` — forget it and the SDK will throw at `Client::__construct` with a remediation hint.
+
+Avoid `registerConverter()` on the builder you pass in: until [CuyZ/Valinor#800](https://github.com/CuyZ/Valinor/issues/800) is fixed, a non-`\Closure` converter (an invokable object) leaks ~70KB per mapped object into a static cache — fatal to long-running workers iterating large collections (see [issue #7](https://github.com/Setono/economic-php-sdk/issues/7)).
 
 ```php
 <?php

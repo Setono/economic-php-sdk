@@ -70,8 +70,8 @@ final class DraftOrdersFullMappingTest extends TestCase
         self::assertSame('Netto 8 dage', $order->paymentTerms->name);
         self::assertSame('net', $order->paymentTerms->paymentTermsType);
 
-        // `customer` maps into the full Customer DTO; RawStamper fires polymorphically, so
-        // even this nested Resource carries its slice of the body on $raw.
+        // `customer` maps into the full Customer DTO; RawStamper::stamp() recurses through the
+        // mapped graph, so even this nested Resource carries its slice of the body on $raw.
         self::assertNotNull($order->customer);
         self::assertSame(1, $order->customer->customerNumber);
         self::assertSame('https://restapi.e-conomic.com/customers/1', $order->customer->raw['self']);

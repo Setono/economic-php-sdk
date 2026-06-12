@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Setono\Economic\Client\Endpoint;
 
 use CuyZ\Valinor\Mapper\MappingError;
-use CuyZ\Valinor\Mapper\Source\Source;
 use Setono\Economic\Exception\MappingException;
 use Setono\Economic\Request\Payload;
+use Setono\Economic\Response\RawStamper;
 use Setono\Economic\Response\Resource;
 
 /**
@@ -67,12 +67,6 @@ abstract class ResourceEndpoint extends Endpoint
 
         $data = $this->client->get($path);
 
-        // $raw is stamped by the polymorphic Resource converter registered in
-        // Client::getMapperBuilder() — fires for every array→Resource mapping during this call,
-        // including nested mappings inside Collection<X>.
-        // NOTE: pass `$data` directly, not `Source::array($data)`. The Source wrapper makes the
-        // shell value the Source object (not the underlying array), so our registered converter's
-        // `array` first-parameter type doesn't accept it and the converter silently skips.
         /** @var T $item */
         $item = $this->mapResource(static::getItemClass(), $data);
 
@@ -122,10 +116,11 @@ abstract class ResourceEndpoint extends Endpoint
     }
 
     /**
-     * Run a Valinor mapping call and convert `MappingError` (a 2xx response whose body
-     * decoded as JSON but didn't fit the target DTO) into the SDK's typed
-     * {@see MappingException}, preserving the original as `$previous` and embedding HTTP
-     * method/URL context for debugging.
+     * Run a Valinor mapping call, stamp `$raw` onto the mapped object graph (full body on the
+     * top-level Resource, slices on nested Resources — {@see RawStamper}), and convert
+     * `MappingError` (a 2xx response whose body decoded as JSON but didn't fit the target DTO)
+     * into the SDK's typed {@see MappingException}, preserving the original as `$previous` and
+     * embedding HTTP method/URL context for debugging.
      *
      * Subclasses use this in their public methods via the `@var T` pattern at the call site
      * (see {@see self::getOne()} / {@see self::createOne()} / {@see CollectionEndpoint::getPage()}).
@@ -141,6 +136,8 @@ abstract class ResourceEndpoint extends Endpoint
             // to `resource` (the PHP primitive type) because the names collide.
             /** @var \Setono\Economic\Response\Resource $item */
             $item = $this->mapperBuilder->mapper()->map($signature, $data);
+
+            RawStamper::stamp($item, $data);
 
             return $item;
         } catch (MappingError $e) {
